@@ -1,0 +1,88 @@
+ECE1528 Project Timeline
+
+Part breakdown:
+
+Hardware:
+Weight Sensor 1 (weight food)
+Weight food → send to cloud
+If food has a weight less than 1kg → notify user to add food
+Weight Sensor 2 (weight cat)
+Weight cat → send weight data to cloud → cloud determine what animal → send data to stepper motor control (counter++, steps)
+LCD Display
+Get status from cloud → Display feeding status & time
+Status
+Pet Binding
+Dispancing
+Finished
+Food empty
+Weight detected!
+Stepper Motor Control
+Get enable & amount from cloud → Dispense amount of food based on counter
+On finish -> change LCD display + Send signal to cloud for logging purpose (dispense complete)
+Software:
+Web dashboard
+1. Pet Binding
+PetBinding (Enable weight sensor) → LCD display Pet Binding state
+Auto populate 3.1kg
+weight
+“Cat” manual
+name
+Container ID
+1
+
+Submit (disable weight sensor, LCD display: Binding complete),
+CreatePet (name, containerID, weight) -> write to database
+(Binding → enable weight detect, finish → disable weight detect)
+2. Set schedule: user enter time and amount of food 
+Container1
+SetSchedule(containerID, scheduleTime, amount) -> write to database
+Container2
+SetSchedule(containerID, scheduleTime, amount)
+3. Trigger feeding
+Check_and_trigger_feeding: (cloud function)
+Runs every minute (or at a defined interval).
+Queries the database for schedules matching the current time.
+Sends a “feed” signal to the hardware (enable weight sensor)
+arg[LCD:“Ready”, Motor{id: 1, enable: true, amount: 1, status: not ready}, weight: enable: true}
+4. Manual trigger
+TriggerManualFeeding→send signal to hardware
+5. ViewLogs
+RetrieveLogs
+GetAnimalByWeight(weight) -> animalType
+Cloud database
+
+Table:
+Animal
+Name
+animalType (container ID)
+Weight
+Food portion
+Food level
+Log entry
+Dispense time 
+Food portion
+Remain food level
+
+
+Message:
+Arg [LCD: {message: int}, motor: {id: int, enable: bool, amount: int}, weight: {enable: bool}]
+Arg[LCD: {message: “Finished”}, motor: {id: 1, enable: true, amount: 1, status: int}, weight: {enable: true}]] 
+
+
+Binding → enable weight detect, finish → disable weight detect
+Feeding time → enable weight detect, Out of Feeding time → disable weight detect
+
+Tool:
+ReactJS, C, PostgresSQL
+
+To do:
+Hardware: weight sensor, motor @kevin
+Software: 
+Cloud database setup @cathy
+React frontend setup @cathy
+Set schedule
+Trigger feeding
+Pet binding @Yilin
+
+
+

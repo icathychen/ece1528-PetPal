@@ -1,5 +1,9 @@
 # PetPal Quick Setup Script for Windows PowerShell
 # This script sets up the complete local development environment
+#To run this script, open PowerShell and execute:
+#cd <path of this script>
+#Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+#.\scripts\setup-local.ps1
 
 $ErrorActionPreference = "Stop"
 

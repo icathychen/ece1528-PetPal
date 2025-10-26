@@ -22,9 +22,20 @@ docker compose restart backend
 docker compose build --no-cache backend
 docker compose up -d backend
 ```
-if MQTT Web Console cannot connect to broker, Run -> docker compose up -d mqtt redis pgadmin //in terminal
 ---
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+if MQTT Web Console cannot connect to broker, 
+Run -> docker compose up -d mqtt redis pgadmin //in terminal
 
+if 8266 连不上：
+1.
+用管理员运行powershell，放行port 1883：
+netsh advfirewall firewall add rule name="Mosquitto 1883 Inbound" dir=in action=allow protocol=TCP localport=1883 profile=Private
+2.
+重启mqtt：
+docker compose restart mqtt
+
+！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
 
 验证服务状态：
 ```powershell

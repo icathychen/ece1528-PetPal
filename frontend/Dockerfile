@@ -15,9 +15,8 @@ COPY package*.json ./
 # Development stage
 FROM base AS development
 
-# Install dependencies and react-scripts globally
-RUN npm install --legacy-peer-deps && \
-    npm install -g react-scripts@5.0.1
+# Install dependencies (do not install react-scripts globally)
+RUN npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
@@ -33,8 +32,8 @@ ENV WDS_SOCKET_PORT=0
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:3000 || exit 1
 
-# Start development server
-CMD ["react-scripts", "start"]
+# Start development server via npm (ensures local node_modules/.bin is used)
+CMD ["npm", "start"]
 
 # Build stage
 FROM base AS build

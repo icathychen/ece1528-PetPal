@@ -1,0 +1,139 @@
+# PetPal 项目常见问题与解决方案
+
+
+Backend 缺少 mqtt 模块
+
+### 方法 1: 在运行的容器中安装（快速）
+```powershell
+docker compose exec backend npm install mqtt --save
+docker compose restart backend
+```
+
+### 方法 2: 在宿主机安装（推荐，持久化）
+```powershell
+cd backend
+npm install mqtt --save
+cd ..
+docker compose restart backend
+```
+
+然后重建：
+```powershell
+docker compose build --no-cache backend
+docker compose up -d backend
+```
+if MQTT Web Console cannot connect to broker, Run -> docker compose up -d mqtt redis pgadmin //in terminal
+---
+
+
+验证服务状态：
+```powershell
+docker compose ps
+```
+
+查看 MQTT 日志：
+```powershell
+docker compose logs -f mqtt
+```
+
+---
+
+## 完整的启动流程
+
+### 首次启动或完全重建
+```powershell
+# 1. 进入项目目录
+cd path\ece1528-PetPal
+
+# 2. 停止并清理所有容器
+docker compose down
+
+# 3. 重新构建所有服务
+docker compose build --no-cache
+
+# 4. 启动所有服务
+docker compose up -d
+
+# 5. 查看服务状态
+docker compose ps
+
+# 6. 查看日志（可选）
+docker compose logs -f
+```
+
+### 日常启动
+```powershell
+cd D:\1528iot\ece1528-PetPal
+docker compose up -d
+```
+
+### 重启特定服务
+```powershell
+# 重启前端
+docker compose restart frontend
+
+# 重启后端
+docker compose restart backend
+
+# 重启 MQTT
+docker compose restart mqtt
+```
+
+---
+
+## 服务访问地址
+
+- **前端 (Frontend)**: http://localhost:3000
+- **后端 (Backend API)**: http://localhost:3001
+- **后端健康检查**: http://localhost:3001/health
+- **PgAdmin (数据库管理)**: http://localhost:8080
+  - 邮箱: admin@petpal.com
+  - 密码: admin123
+- **PostgreSQL 数据库**: localhost:5432
+  - 数据库: petpal_db
+  - 用户: petpal_user
+  - 密码: petpal_secure_password
+- **MQTT Broker**: 
+  - MQTT 端口: localhost:1883
+  - WebSocket 端口: ws://localhost:9001
+- **Redis**: localhost:6379
+
+---
+
+## 常用调试命令
+
+```powershell
+# 查看所有容器状态
+docker compose ps
+
+# 查看特定服务日志
+docker compose logs -f frontend
+docker compose logs -f backend
+docker compose logs -f mqtt
+
+# 进入容器内部调试
+docker compose exec frontend sh
+docker compose exec backend sh
+
+# 查看容器资源使用
+docker stats
+
+# 完全清理并重新开始
+docker compose down -v
+docker compose up -d --build
+```
+
+---
+
+## 注意事项
+
+1. **端口冲突**: 确保 3000, 3001, 5432, 8080, 1883, 9001, 6379 端口未被占用
+2. **Docker Desktop**: 必须确保 Docker Desktop 正在运行
+3. **WSL2**: 如果使用 WSL2 后端，确保 WSL integration 已启用
+4. **node_modules**: 容器使用匿名卷挂载 `/app/node_modules`，修改 package.json 后需重建镜像
+5. **热重载**: 代码修改会自动重载（通过 volume bind mount）
+
+---
+
+最后更新: 2025-10-26
+ 

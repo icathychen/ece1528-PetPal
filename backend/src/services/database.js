@@ -14,11 +14,11 @@ const pool = new Pool({
 
 // Test database connection
 pool.on('connect', () => {
-  console.log('💾 Connected to PostgreSQL database');
+  console.log('Connected to PostgreSQL database');
 });
 
 pool.on('error', (err) => {
-  console.error('❌ Database connection error:', err);
+  console.error('Database connection error:', err);
 });
 
 // Helper function to execute queries
@@ -27,10 +27,10 @@ const query = async (text, params) => {
   try {
     const res = await pool.query(text, params);
     const duration = Date.now() - start;
-    console.log(`🔍 Query executed in ${duration}ms: ${text.substring(0, 50)}...`);
+    console.log(`Query executed in ${duration}ms: ${text.substring(0, 50)}...`);
     return res;
   } catch (error) {
-    console.error('❌ Database query error:', error);
+    console.error('Database query error:', error);
     throw error;
   }
 };

@@ -68,7 +68,7 @@ class FeedingScheduler {
         return;
       }
 
-      console.log(`🍽️ Found ${currentSchedules.length} scheduled feeding(s) to trigger`);
+      console.log(`Found ${currentSchedules.length} scheduled feeding(s) to trigger`);
 
       for (const schedule of currentSchedules) {
         await this.triggerFeedingForSchedule(schedule);
@@ -136,6 +136,15 @@ class FeedingScheduler {
 
         console.log(`Feeding triggered for ${schedule.animal_name}: ${schedule.food_amount}kg dispensed`);
         console.log(`MQTT messages published to motor${schedule.container_id} topic`);
+
+        // Check if food level is low (< 0.5kg) after feeding
+        const LOW_FOOD_THRESHOLD = 0.5;
+        if (newFoodLevel < LOW_FOOD_THRESHOLD) {
+          await mqttService.publishLCDMessage(
+            `LOW FOOD: Container ${schedule.container_id} - ${newFoodLevel.toFixed(2)}kg left`
+          );
+          console.warn(`LOW FOOD ALERT: ${schedule.animal_name} (Container ${schedule.container_id}) has only ${newFoodLevel.toFixed(2)}kg left!`);
+        }
 
       } catch (mqttError) {
         console.error('Failed to publish MQTT message:', mqttError.message);

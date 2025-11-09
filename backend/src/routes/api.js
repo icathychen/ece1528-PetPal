@@ -323,7 +323,7 @@ router.post('/feeding/manual', async (req, res) => {
     // Update food level
     await dbService.updateFoodLevel(container_id, newFoodLevel);
 
-    // 🚀 PUBLISH MQTT MESSAGE TO HARDWARE
+    // PUBLISH MQTT MESSAGE TO HARDWARE
     try {
       // Publish motor trigger message
       await mqttService.publishMotorTrigger({
@@ -338,9 +338,18 @@ router.post('/feeding/manual', async (req, res) => {
         `Manual Feed - ${animal.name}: ${food_amount}kg`
       );
 
-      console.log(`📤 MQTT: Manual feeding triggered for ${animal.name}`);
+      console.log(`MQTT: Manual feeding triggered for ${animal.name}`);
+
+      // Check if food level is low (< 0.5kg) after feeding
+      const LOW_FOOD_THRESHOLD = 0.5;
+      if (newFoodLevel < LOW_FOOD_THRESHOLD) {
+        await mqttService.publishLCDMessage(
+          `LOW FOOD: Container ${container_id} - ${newFoodLevel.toFixed(2)}kg left`
+        );
+        console.warn(`LOW FOOD ALERT: ${animal.name} (Container ${container_id}) has only ${newFoodLevel.toFixed(2)}kg left!`);
+      }
     } catch (mqttError) {
-      console.error('❌ MQTT publish failed:', mqttError.message);
+      console.error('MQTT publish failed:', mqttError.message);
       // Continue even if MQTT fails - feeding is logged in database
     }
 

@@ -118,7 +118,7 @@ class MQTTService {
   publish(topic, message) {
     return new Promise((resolve, reject) => {
       if (!this.isConnected) {
-        console.warn('⚠️  MQTT not connected, skipping publish to', topic);
+        console.warn('MQTT not connected, skipping publish to', topic);
         return reject(new Error('MQTT client not connected'));
       }
 
@@ -126,10 +126,10 @@ class MQTTService {
       
       this.client.publish(topic, payload, { qos: 1 }, (error) => {
         if (error) {
-          console.error(`❌ Failed to publish to ${topic}:`, error.message);
+          console.error(`Failed to publish to ${topic}:`, error.message);
           reject(error);
         } else {
-          console.log(`📤 Published to ${topic}:`, message);
+          console.log(`Published to ${topic}:`, message);
           resolve();
         }
       });

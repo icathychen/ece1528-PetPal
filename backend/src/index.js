@@ -152,29 +152,29 @@ process.on('SIGINT', () => {
 
 // Start server
 app.listen(PORT, '0.0.0.0', async () => {
-  console.log(`🚀 PetPal Backend running on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
-  console.log(`🔗 API docs: http://localhost:${PORT}/`);
+  console.log(`PetPal Backend running on port ${PORT}`);
+  console.log(`Health check: http://localhost:${PORT}/health`);
+  console.log(`API docs: http://localhost:${PORT}/`);
   
   // Initialize MQTT connection
   try {
     mqttService.connect();
-    console.log('📡 MQTT service initialized');
+    console.log('MQTT service initialized');
   } catch (error) {
-    console.error('⚠️ MQTT connection failed:', error.message);
-    console.log('🔄 Server running but MQTT features unavailable');
+    console.error('MQTT connection failed:', error.message);
+    console.log('Server running but MQTT features unavailable');
   }
   
   // Test database connection
   try {
     await dbService.healthCheck();
-    console.log('💾 Database connection verified');
+    console.log('Database connection verified');
     
     // Start the feeding scheduler
     feedingScheduler.start();
-    console.log('⏰ Automatic feeding scheduler started');
+    console.log('Automatic feeding scheduler started');
   } catch (error) {
-    console.error('❌ Database connection failed:', error.message);
-    console.log('🔄 Server running but database features unavailable');
+    console.error('Database connection failed:', error.message);
+    console.log('Server running but database features unavailable');
   }
 });

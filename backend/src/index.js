@@ -7,6 +7,7 @@ require('dotenv').config();
 // Import services and routes
 const { dbService } = require('./services/database');
 const { feedingScheduler } = require('./services/scheduler');
+const { mqttService } = require('./services/mqttService');
 const apiRoutes = require('./routes/api');
 
 const app = express();
@@ -23,6 +24,7 @@ app.get('/health', async (req, res) => {
   try {
     const dbHealth = await dbService.healthCheck();
     const schedulerStatus = feedingScheduler.getStatus();
+    const mqttStatus = mqttService.getStatus();
     
     res.status(200).json({ 
       status: 'healthy', 
@@ -32,7 +34,8 @@ app.get('/health', async (req, res) => {
         current_time: dbHealth.current_time,
         version: dbHealth.db_version
       },
-      scheduler: schedulerStatus
+      scheduler: schedulerStatus,
+      mqtt: mqttStatus
     });
   } catch (error) {
     console.error('Health check failed:', error);
@@ -136,12 +139,14 @@ app.use((req, res) => {
 process.on('SIGTERM', () => {
   console.log('🛑 SIGTERM received, shutting down gracefully');
   feedingScheduler.stop();
+  mqttService.disconnect();
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
   console.log('🛑 SIGINT received, shutting down gracefully');
   feedingScheduler.stop();
+  mqttService.disconnect();
   process.exit(0);
 });
 
@@ -150,6 +155,15 @@ app.listen(PORT, '0.0.0.0', async () => {
   console.log(`🚀 PetPal Backend running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   console.log(`🔗 API docs: http://localhost:${PORT}/`);
+  
+  // Initialize MQTT connection
+  try {
+    mqttService.connect();
+    console.log('📡 MQTT service initialized');
+  } catch (error) {
+    console.error('⚠️ MQTT connection failed:', error.message);
+    console.log('🔄 Server running but MQTT features unavailable');
+  }
   
   // Test database connection
   try {

@@ -1,5 +1,6 @@
 const express = require('express');
 const { dbService } = require('../services/database');
+const { mqttService } = require('../services/mqttService');
 const Joi = require('joi');
 
 const router = express.Router();
@@ -322,17 +323,26 @@ router.post('/feeding/manual', async (req, res) => {
     // Update food level
     await dbService.updateFoodLevel(container_id, newFoodLevel);
 
-    // Simulate hardware signal
-    const hardwareSignal = {
-      LCD: { message: "Manual feeding" },
-      motor: { 
-        id: container_id, 
-        enable: true, 
-        amount: food_amount, 
-        status: "not ready" 
-      },
-      weight: { enable: false }
-    };
+    // 🚀 PUBLISH MQTT MESSAGE TO HARDWARE
+    try {
+      // Publish motor trigger message
+      await mqttService.publishMotorTrigger({
+        container_id: container_id,
+        food_amount: food_amount,
+        animal_name: animal.name,
+        feeding_type: 'manual'
+      });
+
+      // Publish LCD message
+      await mqttService.publishLCDMessage(
+        `Manual Feed - ${animal.name}: ${food_amount}kg`
+      );
+
+      console.log(`📤 MQTT: Manual feeding triggered for ${animal.name}`);
+    } catch (mqttError) {
+      console.error('❌ MQTT publish failed:', mqttError.message);
+      // Continue even if MQTT fails - feeding is logged in database
+    }
 
     res.status(201).json({
       success: true,
@@ -341,8 +351,7 @@ router.post('/feeding/manual', async (req, res) => {
       container_id: container_id,
       food_amount: food_amount,
       remaining_food_level: newFoodLevel,
-      log_entry: logEntry,
-      hardware_signal: hardwareSignal
+      logEntry: logEntry
     });
   } catch (error) {
     console.error('Manual trigger feeding error:', error);

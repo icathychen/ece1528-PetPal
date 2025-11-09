@@ -104,7 +104,7 @@ const dbService = {
       FROM feeding_schedules fs 
       JOIN animals a ON fs.animal_id = a.id 
       WHERE fs.is_active = true 
-      AND fs.schedule_time = CURRENT_TIME::time
+      AND fs.schedule_time = CURRENT_TIME::time(0)
       ORDER BY fs.container_id;
     `;
     const result = await query(queryText);

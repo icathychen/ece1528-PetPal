@@ -12,9 +12,9 @@ export default function MqttConsole({ onBack }: Props) {
 
   const [url, setUrl] = useState<string>(defaultUrl);
   const [status, setStatus] = useState<'disconnected' | 'reconnecting' | 'connected'>('disconnected');
-  const [subTopic, setSubTopic] = useState<string>('petpal/#');
-  const [pubTopic, setPubTopic] = useState<string>('petpal/test');
-  const [pubPayload, setPubPayload] = useState<string>('{"hello":"world"}');
+  const [subTopic, setSubTopic] = useState<string>('#');
+  const [pubTopic, setPubTopic] = useState<string>('weightSensor1');
+  const [pubPayload, setPubPayload] = useState<string>('3.5');
 
   const logRef = useRef<HTMLPreElement | null>(null);
   const clientRef = useRef<any>(null); // 若你装了 mqtt 的类型，可改成 MqttClient

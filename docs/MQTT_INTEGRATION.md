@@ -40,6 +40,24 @@ This document explains how the MQTT publisher/subscriber system works for trigge
 }
 ```
 
+#### Weight1 Message
+```json
+{
+  "weight": "1.0"
+}
+
+#### Weight2 Message
+```json
+{
+  "weight": "1.0"
+}
+
+#### WeightEnable Message
+```json
+{
+  "enable": true
+}
+
 #### LCD Display Message
 ```json
 {

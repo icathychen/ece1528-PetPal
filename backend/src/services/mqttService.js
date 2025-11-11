@@ -10,6 +10,7 @@ class MQTTService {
       WEIGHT_SENSOR1: 'weightSensor1',
       WEIGHT_SENSOR2: 'weightSensor2',
       LCD: 'lcd',
+      WEIGHT_ENABLE: 'weightEnable'
     };
   }
 

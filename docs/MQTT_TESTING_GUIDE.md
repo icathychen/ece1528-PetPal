@@ -38,7 +38,7 @@ curl -X POST http://localhost:3001/api/schedules \
   -d '{
     "animal_id": 1,
     "container_id": 1,
-    "schedule_time": "19:47:00",
+    "schedule_time": "22:15:02",
     "food_amount": 0.25
   }'
 ```

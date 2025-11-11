@@ -56,12 +56,13 @@ const PetBinding: React.FC<PetBindingProps> = ({ onBack }) => {
     }
     setBindingMode(false);
     
-    // Send MQTT message to disable weight sensor
+    // Send weight disable message
     try {
-      await apiService.controlWeightSensor(1, false);
-      console.log('Weight sensor 1 disabled');
+      await apiService.sendWeightEnable(false);
+      await apiService.sendLCDMessage("Binding Complete");
+      console.log('Weight sensor disabled, LCD updated');
     } catch (err) {
-      console.error('Failed to disable weight sensor:', err);
+      console.error('Failed to send control messages:', err);
     }
     
     // Keep the detected weight, just stop polling
@@ -86,12 +87,13 @@ const PetBinding: React.FC<PetBindingProps> = ({ onBack }) => {
       weight: '' // Reset to empty string
     }));
     
-    // Send MQTT message to disable weight sensor
+    // Send weight disable and LCD message
     try {
-      await apiService.controlWeightSensor(1, false);
-      console.log('Weight sensor 1 disabled');
+      await apiService.sendWeightEnable(false);
+      await apiService.sendLCDMessage("Binding Cancelled");
+      console.log('Weight sensor disabled, binding cancelled');
     } catch (err) {
-      console.error('Failed to disable weight sensor:', err);
+      console.error('Failed to send control messages:', err);
     }
     
     // Clear backend weight sensor data
@@ -121,12 +123,13 @@ const PetBinding: React.FC<PetBindingProps> = ({ onBack }) => {
       console.error('Failed to clear weight sensor:', err);
     }
 
-    // Send MQTT message to enable weight sensor
+    // Send weight enable and LCD message
     try {
-      await apiService.controlWeightSensor(1, true);
-      console.log('Weight sensor 1 enabled');
+      await apiService.sendWeightEnable(true);
+      await apiService.sendLCDMessage("Pet Binding");
+      console.log('Weight sensor enabled, Pet Binding mode started');
     } catch (err) {
-      console.error('Failed to enable weight sensor:', err);
+      console.error('Failed to send control messages:', err);
     }
 
     setBindingMode(true);
@@ -171,9 +174,12 @@ const PetBinding: React.FC<PetBindingProps> = ({ onBack }) => {
         setPollIntervalRef(null);
         setBindingMode(false);
         
-        // Disable weight sensor on timeout
-        apiService.controlWeightSensor(1, false).catch(err => {
+        // Send timeout message
+        apiService.sendWeightEnable(false).catch((err: any) => {
           console.error('Failed to disable weight sensor on timeout:', err);
+        });
+        apiService.sendLCDMessage("Detection Timeout").catch((err: any) => {
+          console.error('Failed to send LCD message on timeout:', err);
         });
         
         const weightNum = typeof formData.weight === 'string' ? parseFloat(formData.weight) : formData.weight;

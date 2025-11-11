@@ -10,7 +10,8 @@ const TOPICS = {
   MOTOR2: 'motor2',
   WEIGHT_SENSOR1: 'weightSensor1',
   WEIGHT_SENSOR2: 'weightSensor2',
-  LCD: 'lcd'
+  LCD: 'lcd',
+  WEIGHT_ENABLE: 'weightEnable'  // JSON: {enable: true/false}
 };
 
 // Store latest weight sensor readings
@@ -35,20 +36,38 @@ client.on('message', (topic, message) => {
   const payload = message.toString();
   console.log(`[mqtt] ${topic} -> ${payload}`);
   
-  // Store weight sensor readings
+  // Store weight sensor readings - expecting JSON format: {"weight": "1.0"}
   if (topic === TOPICS.WEIGHT_SENSOR1) {
     try {
-      latestWeightSensor1 = parseFloat(payload);
-      console.log('[mqtt] Weight Sensor 1 updated:', latestWeightSensor1);
+      const data = JSON.parse(payload);
+      if (data.weight !== undefined) {
+        latestWeightSensor1 = parseFloat(data.weight);
+        console.log('[mqtt] Weight Sensor 1 updated:', latestWeightSensor1);
+      }
     } catch (e) {
-      console.error('[mqtt] Failed to parse weight sensor 1 data:', e);
+      // Fallback: try parsing as plain number for backward compatibility
+      try {
+        latestWeightSensor1 = parseFloat(payload);
+        console.log('[mqtt] Weight Sensor 1 updated (plain):', latestWeightSensor1);
+      } catch (e2) {
+        console.error('[mqtt] Failed to parse weight sensor 1 data:', e);
+      }
     }
   } else if (topic === TOPICS.WEIGHT_SENSOR2) {
     try {
-      latestWeightSensor2 = parseFloat(payload);
-      console.log('[mqtt] Weight Sensor 2 updated:', latestWeightSensor2);
+      const data = JSON.parse(payload);
+      if (data.weight !== undefined) {
+        latestWeightSensor2 = parseFloat(data.weight);
+        console.log('[mqtt] Weight Sensor 2 updated:', latestWeightSensor2);
+      }
     } catch (e) {
-      console.error('[mqtt] Failed to parse weight sensor 2 data:', e);
+      // Fallback: try parsing as plain number for backward compatibility
+      try {
+        latestWeightSensor2 = parseFloat(payload);
+        console.log('[mqtt] Weight Sensor 2 updated (plain):', latestWeightSensor2);
+      } catch (e2) {
+        console.error('[mqtt] Failed to parse weight sensor 2 data:', e);
+      }
     }
   }
 });
@@ -87,6 +106,23 @@ function publishWeightSensorControl(sensorId, enable) {
   console.log(`[mqtt] Published to ${topic}: ${command}`);
 }
 
+/**
+ * Publish weight enable control message in JSON format
+ * @param {boolean} enable - true to enable, false to disable
+ * 
+ * Example:
+ * publishWeightEnable(true)  // {"enable": true}
+ */
+function publishWeightEnable(enable) {
+  const message = {
+    enable: enable
+  };
+  
+  publish(TOPICS.WEIGHT_ENABLE, message);
+  console.log(`[mqtt] Published to ${TOPICS.WEIGHT_ENABLE}:`, JSON.stringify(message));
+  return message;
+}
+
 function getLatestWeight(sensorId = 1) {
   return sensorId === 1 ? latestWeightSensor1 : latestWeightSensor2;
 }
@@ -108,6 +144,7 @@ module.exports = {
   publishMotor2,
   publishLCD,
   publishWeightSensorControl,
+  publishWeightEnable,
   getLatestWeight,
   clearWeightSensor,
   TOPICS

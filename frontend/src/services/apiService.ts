@@ -164,6 +164,13 @@ class ApiService {
       body: JSON.stringify({ sensorId, enable }),
     });
   }
+
+  async sendWeightEnable(enable: boolean) {
+    return this.request('/api/mqtt/weight-enable', {
+      method: 'POST',
+      body: JSON.stringify({ enable }),
+    });
+  }
 }
 
 // Create singleton instance

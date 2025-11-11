@@ -1,6 +1,6 @@
 const express = require('express');
 const { dbService } = require('../services/database');
-const { publishMotor1, publishMotor2, publishLCD, publishWeightSensorControl, getLatestWeight, clearWeightSensor } = require('../services/mqtt');
+const { publishMotor1, publishMotor2, publishLCD, publishWeightSensorControl, publishWeightEnable, getLatestWeight, clearWeightSensor } = require('../services/mqtt');
 const Joi = require('joi');
 
 const router = express.Router();
@@ -592,5 +592,33 @@ router.post('/mqtt/lcd', (req, res) => {
   }
 });
 
-module.exports = router;
+// POST /api/mqtt/weight-enable - Control weight sensor enable/disable with JSON
+router.post('/mqtt/weight-enable', async (req, res) => {
+  try {
+    const { enable } = req.body;
+    
+    // Validate enable
+    if (typeof enable !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid enable parameter. Must be boolean'
+      });
+    }
+    
+    const message = publishWeightEnable(enable);
+    
+    res.json({
+      success: true,
+      message: 'Weight enable message sent',
+      data: message
+    });
+  } catch (error) {
+    console.error('Weight enable error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send weight enable message'
+    });
+  }
+});
+
 module.exports = router;

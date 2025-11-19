@@ -59,6 +59,9 @@ services:
       DB_NAME: petpal_db
       DB_USER: petpal_user
       DB_PASSWORD: petpal_secure_password
+
+      MQTT_URL: mqtt://mqtt:1883
+
     ports:
       - "3001:3001"
     volumes:

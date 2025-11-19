@@ -1,4 +1,5 @@
 const { dbService } = require('./database');
+const { mqttService } = require('./mqttService');
 
 class FeedingScheduler {
   constructor() {
@@ -9,29 +10,44 @@ class FeedingScheduler {
 
   start() {
     if (this.isRunning) {
-      console.log('⏰ Feeding scheduler is already running');
+      console.log('Feeding scheduler is already running');
       return;
     }
 
-    console.log('🚀 Starting feeding scheduler - checking every minute for scheduled feedings');
+    console.log('Starting feeding scheduler - checking every minute for scheduled feedings');
     this.isRunning = true;
     
     // Run immediately on start
     this.checkScheduledFeedings();
     
-    // Then run every minute
-    this.intervalId = setInterval(() => {
+    // Calculate time until next minute (:00 seconds)
+    const now = new Date();
+    const secondsUntilNextMinute = 60 - now.getSeconds();
+    const msUntilNextMinute = secondsUntilNextMinute * 1000 - now.getMilliseconds();
+    
+    console.log(`Syncing scheduler to next minute (:00 seconds) in ${secondsUntilNextMinute} seconds`);
+    
+    // Wait until the next :00 second, then start checking every minute
+    setTimeout(() => {
+      // First aligned check at :00
       this.checkScheduledFeedings();
-    }, this.checkInterval);
+      
+      // Then check every minute at :00
+      this.intervalId = setInterval(() => {
+        this.checkScheduledFeedings();
+      }, this.checkInterval);
+      
+      console.log('Scheduler synced - now checking every minute at :00 seconds');
+    }, msUntilNextMinute);
   }
 
   stop() {
     if (!this.isRunning) {
-      console.log('⏰ Feeding scheduler is not running');
+      console.log('Feeding scheduler is not running');
       return;
     }
 
-    console.log('🛑 Stopping feeding scheduler');
+    console.log('Stopping feeding scheduler');
     this.isRunning = false;
     
     if (this.intervalId) {
@@ -43,39 +59,39 @@ class FeedingScheduler {
   async checkScheduledFeedings() {
     try {
       const currentTime = new Date().toTimeString().slice(0, 8); // HH:MM:SS format
-      console.log(`⏰ Checking for scheduled feedings at ${currentTime}`);
+      console.log(`Checking for scheduled feedings at ${currentTime}`);
       
       const currentSchedules = await dbService.getCurrentSchedules();
       
       if (currentSchedules.length === 0) {
-        console.log('📅 No scheduled feedings found for current time');
+        console.log('No scheduled feedings found for current time');
         return;
       }
 
-      console.log(`🍽️ Found ${currentSchedules.length} scheduled feeding(s) to trigger`);
+      console.log(`Found ${currentSchedules.length} scheduled feeding(s) to trigger`);
 
       for (const schedule of currentSchedules) {
         await this.triggerFeedingForSchedule(schedule);
       }
     } catch (error) {
-      console.error('❌ Error checking scheduled feedings:', error);
+      console.error('Error checking scheduled feedings:', error);
     }
   }
 
   async triggerFeedingForSchedule(schedule) {
     try {
-      console.log(`🎯 Triggering feeding for ${schedule.animal_name} (Container ${schedule.container_id})`);
+      console.log(`Triggering feeding for ${schedule.animal_name} (Container ${schedule.container_id})`);
       
       // Get current animal data
       const animal = await dbService.getAnimalByContainerId(schedule.container_id);
       if (!animal) {
-        console.error(`❌ Animal not found for container ${schedule.container_id}`);
+        console.error(`Animal not found for container ${schedule.container_id}`);
         return;
       }
 
       // Check if enough food available
       if (animal.food_level < schedule.food_amount) {
-        console.warn(`⚠️ Insufficient food for ${schedule.animal_name}. Available: ${animal.food_level}kg, Needed: ${schedule.food_amount}kg`);
+        console.warn(`Insufficient food for ${schedule.animal_name}. Available: ${animal.food_level}kg, Needed: ${schedule.food_amount}kg`);
         
         // Still log the attempt but with 0 dispensed
         await dbService.createLogEntry({
@@ -103,36 +119,42 @@ class FeedingScheduler {
       // Update food level
       await dbService.updateFoodLevel(schedule.container_id, newFoodLevel);
 
-      // Simulate sending signal to hardware
-      const hardwareSignal = {
-        LCD: { message: "Ready" },
-        motor: { 
-          id: schedule.container_id, 
-          enable: true, 
-          amount: schedule.food_amount, 
-          status: "not ready" 
-        },
-        weight: { enable: true }
-      };
+      // SEND MQTT MESSAGE TO HARDWARE MOTOR
+      try {
+        // Publish motor trigger message
+        await mqttService.publishMotorTrigger({
+          container_id: schedule.container_id,
+          food_amount: schedule.food_amount,
+          animal_name: schedule.animal_name,
+          animal_weight: animal.weight,
+          feeding_type: 'scheduled'
+        });
 
-      console.log(`✅ Feeding triggered for ${schedule.animal_name}: ${schedule.food_amount}kg dispensed`);
-      console.log(`📡 Hardware signal sent:`, JSON.stringify(hardwareSignal, null, 2));
-      
-      // In a real implementation, this is where you would send the signal to the hardware
-      // For now, we just log it
-      this.simulateHardwareResponse(schedule, hardwareSignal);
+        // Publish LCD message
+        await mqttService.publishLCDMessage(
+          `Feeding ${schedule.animal_name} - ${schedule.food_amount}kg`
+        );
+
+        console.log(`Feeding triggered for ${schedule.animal_name}: ${schedule.food_amount}kg dispensed`);
+        console.log(`MQTT messages published to motor${schedule.container_id} topic`);
+
+        // Check if food level is low (< 0.5kg) after feeding
+        const LOW_FOOD_THRESHOLD = 0.5;
+        if (newFoodLevel < LOW_FOOD_THRESHOLD) {
+          await mqttService.publishLCDMessage(
+            `LOW FOOD: Container ${schedule.container_id} - ${newFoodLevel.toFixed(2)}kg left`
+          );
+          console.warn(`LOW FOOD ALERT: ${schedule.animal_name} (Container ${schedule.container_id}) has only ${newFoodLevel.toFixed(2)}kg left!`);
+        }
+
+      } catch (mqttError) {
+        console.error('Failed to publish MQTT message:', mqttError.message);
+        console.log('Feeding logged in database but hardware not triggered');
+      }
 
     } catch (error) {
-      console.error(`❌ Error triggering feeding for schedule ${schedule.id}:`, error);
+      console.error(`Error triggering feeding for schedule ${schedule.id}:`, error);
     }
-  }
-
-  simulateHardwareResponse(schedule, signal) {
-    // Simulate hardware processing time
-    setTimeout(() => {
-      console.log(`🤖 Hardware response for Container ${schedule.container_id}: Feeding completed`);
-      console.log(`💡 LCD Display: "Feeding complete - ${schedule.animal_name}"`);
-    }, 2000); // 2 second delay to simulate hardware processing
   }
 
   getStatus() {
@@ -145,7 +167,7 @@ class FeedingScheduler {
 
   // Method to manually trigger a check (useful for testing)
   async manualCheck() {
-    console.log('🔄 Manual feeding check triggered');
+    console.log('Manual feeding check triggered');
     await this.checkScheduledFeedings();
   }
 }

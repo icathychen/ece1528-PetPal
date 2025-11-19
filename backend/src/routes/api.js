@@ -1,5 +1,6 @@
 const express = require('express');
 const { dbService } = require('../services/database');
+const { mqttService, publishMotor1, publishMotor2, publishLCD, publishWeightSensorControl, publishWeightEnable, getLatestWeight, clearWeightSensor } = require('../services/mqttService');
 const Joi = require('joi');
 
 const router = express.Router();
@@ -322,17 +323,36 @@ router.post('/feeding/manual', async (req, res) => {
     // Update food level
     await dbService.updateFoodLevel(container_id, newFoodLevel);
 
-    // Simulate hardware signal
-    const hardwareSignal = {
-      LCD: { message: "Manual feeding" },
-      motor: { 
-        id: container_id, 
-        enable: true, 
-        amount: food_amount, 
-        status: "not ready" 
-      },
-      weight: { enable: false }
-    };
+    // PUBLISH MQTT MESSAGE TO HARDWARE
+    try {
+      // Publish motor trigger message
+      await mqttService.publishMotorTrigger({
+        container_id: container_id,
+        food_amount: food_amount,
+        animal_name: animal.name,
+        animal_weight: animal.weight,
+        feeding_type: 'manual'
+      });
+
+      // Publish LCD message
+      await mqttService.publishLCDMessage(
+        `Manual Feed - ${animal.name}: ${food_amount}kg`
+      );
+
+      console.log(`MQTT: Manual feeding triggered for ${animal.name}`);
+
+      // Check if food level is low (< 0.5kg) after feeding
+      const LOW_FOOD_THRESHOLD = 0.5;
+      if (newFoodLevel < LOW_FOOD_THRESHOLD) {
+        await mqttService.publishLCDMessage(
+          `LOW FOOD: Container ${container_id} - ${newFoodLevel.toFixed(2)}kg left`
+        );
+        console.warn(`LOW FOOD ALERT: ${animal.name} (Container ${container_id}) has only ${newFoodLevel.toFixed(2)}kg left!`);
+      }
+    } catch (mqttError) {
+      console.error('MQTT publish failed:', mqttError.message);
+      // Continue even if MQTT fails - feeding is logged in database
+    }
 
     res.status(201).json({
       success: true,
@@ -341,8 +361,7 @@ router.post('/feeding/manual', async (req, res) => {
       container_id: container_id,
       food_amount: food_amount,
       remaining_food_level: newFoodLevel,
-      log_entry: logEntry,
-      hardware_signal: hardwareSignal
+      logEntry: logEntry
     });
   } catch (error) {
     console.error('Manual trigger feeding error:', error);
@@ -413,6 +432,209 @@ router.get('/logs/stats', async (req, res) => {
     res.status(500).json({ 
       success: false, 
       error: 'Failed to retrieve feeding statistics' 
+    });
+  }
+});
+
+// ##### 6. MQTT Hardware Control #####
+
+// GET /api/mqtt/weight/:sensorId - Get latest weight sensor reading
+router.get('/mqtt/weight/:sensorId', (req, res) => {
+  try {
+    const sensorId = parseInt(req.params.sensorId);
+    if (sensorId !== 1 && sensorId !== 2) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid sensor ID. Must be 1 or 2'
+      });
+    }
+
+    const weight = getLatestWeight(sensorId);
+    
+    res.json({
+      success: true,
+      sensor_id: sensorId,
+      weight: weight,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Get weight sensor error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get weight sensor data'
+    });
+  }
+});
+
+// DELETE /api/mqtt/weight/:sensorId - Clear weight sensor data
+router.delete('/mqtt/weight/:sensorId', (req, res) => {
+  try {
+    const sensorId = parseInt(req.params.sensorId);
+    if (sensorId !== 1 && sensorId !== 2) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid sensor ID. Must be 1 or 2'
+      });
+    }
+
+    clearWeightSensor(sensorId);
+    
+    res.json({
+      success: true,
+      message: `Weight sensor ${sensorId} data cleared`,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Clear weight sensor error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to clear weight sensor data'
+    });
+  }
+});
+
+// POST /api/mqtt/weight-sensor-control - Control weight sensor (enable/disable)
+router.post('/mqtt/weight-sensor-control', (req, res) => {
+  try {
+    const { sensorId, enable } = req.body;
+    
+    if (sensorId !== 1 && sensorId !== 2) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid sensor ID. Must be 1 or 2'
+      });
+    }
+
+    if (typeof enable !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid enable value. Must be true or false'
+      });
+    }
+
+    publishWeightSensorControl(sensorId, enable);
+    
+    res.json({
+      success: true,
+      message: `Weight sensor ${sensorId} ${enable ? 'enabled' : 'disabled'}`,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Weight sensor control error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to control weight sensor'
+    });
+  }
+});
+
+// // POST /api/mqtt/motor1 - Control Motor 1
+// router.post('/mqtt/motor1', (req, res) => {
+//   try {
+//     const { command } = req.body;
+//     if (!command || !['start', 'stop'].includes(command)) {
+//       return res.status(400).json({
+//         success: false,
+//         error: 'Invalid command. Must be "start" or "stop"'
+//       });
+//     }
+
+//     publishMotor1(command);
+    
+//     res.json({
+//       success: true,
+//       message: `Motor 1 command sent: ${command}`,
+//       timestamp: new Date().toISOString()
+//     });
+//   } catch (error) {
+//     console.error('Motor 1 control error:', error);
+//     res.status(500).json({
+//       success: false,
+//       error: 'Failed to control Motor 1'
+//     });
+//   }
+// });
+
+// // POST /api/mqtt/motor2 - Control Motor 2
+// router.post('/mqtt/motor2', (req, res) => {
+//   try {
+//     const { command } = req.body;
+//     if (!command || !['start', 'stop'].includes(command)) {
+//       return res.status(400).json({
+//         success: false,
+//         error: 'Invalid command. Must be "start" or "stop"'
+//       });
+//     }
+
+//     publishMotor2(command);
+    
+//     res.json({
+//       success: true,
+//       message: `Motor 2 command sent: ${command}`,
+//       timestamp: new Date().toISOString()
+//     });
+//   } catch (error) {
+//     console.error('Motor 2 control error:', error);
+//     res.status(500).json({
+//       success: false,
+//       error: 'Failed to control Motor 2'
+//     });
+//   }
+// });
+
+// POST /api/mqtt/lcd - Send message to LCD
+router.post('/mqtt/lcd', (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid message. Must be a string'
+      });
+    }
+
+    publishLCD(message);
+    
+    res.json({
+      success: true,
+      message: 'LCD message sent',
+      content: message,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('LCD control error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send LCD message'
+    });
+  }
+});
+
+// POST /api/mqtt/weight-enable - Control weight sensor enable/disable with JSON
+router.post('/mqtt/weight-enable', async (req, res) => {
+  try {
+    const { enable } = req.body;
+    
+    // Validate enable
+    if (typeof enable !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid enable parameter. Must be boolean'
+      });
+    }
+    
+    const message = publishWeightEnable(enable);
+    
+    res.json({
+      success: true,
+      message: 'Weight enable message sent',
+      data: message
+    });
+  } catch (error) {
+    console.error('Weight enable error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send weight enable message'
     });
   }
 });

@@ -7,6 +7,8 @@ import Dashboard from './pages/Dashboard.tsx';
 import AnimalDetail from './pages/AnimalDetail.tsx';
 import PetBinding from './pages/PetBinding.tsx';
 import './App.css';
+import MqttConsole from './MqttConsole.tsx';
+import { Button } from '@mui/material';
 
 const theme = createTheme({
   palette: {
@@ -20,7 +22,7 @@ const theme = createTheme({
 });
 
 function App() {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'animal' | 'binding'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'animal' | 'binding' | 'mqtt'>('dashboard');
   const [selectedAnimalId, setSelectedAnimalId] = useState<number | null>(null);
   const [currentTime, setCurrentTime] = useState<string>('');
 
@@ -90,8 +92,18 @@ function App() {
               color="success" 
               variant="outlined" 
               size="small"
-              sx={{ color: 'white', borderColor: 'white' }}
+              sx={{ color: 'white', borderColor: 'white', mr: 1 }}
             />
+
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setCurrentView('mqtt')}
+              sx={{ color: 'white', borderColor: 'white' }}
+            >
+              MQTT Console
+            </Button>
+
           </Toolbar>
         </AppBar>
 
@@ -111,6 +123,11 @@ function App() {
           {currentView === 'binding' && (
             <PetBinding 
               onBack={handleBackToDashboard}
+            />
+          )}
+          {currentView === 'mqtt' && (
+            <MqttConsole 
+              onBack={() => setCurrentView('dashboard')} 
             />
           )}
         </main>

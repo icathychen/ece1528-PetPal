@@ -12,13 +12,16 @@ class MQTTService {
       LCD: 'lcd',
       WEIGHT_ENABLE: 'weightEnable'
     };
+    // Store latest weight sensor readings
+    this.latestWeightSensor1 = null;
+    this.latestWeightSensor2 = null;
   }
 
   /**
    * Connect to MQTT broker
    */
   connect() {
-    const brokerUrl = process.env.MQTT_BROKER_URL || 'mqtt://mqtt:1883';
+    const brokerUrl = process.env.MQTT_BROKER_URL || process.env.MQTT_URL || 'mqtt://mqtt:1883';
     
     console.log(`Connecting to MQTT broker at ${brokerUrl}...`);
     
@@ -32,6 +35,58 @@ class MQTTService {
     this.client.on('connect', () => {
       console.log('Connected to MQTT broker');
       this.isConnected = true;
+      
+      // Subscribe to weight sensors for tracking latest values
+      this.client.subscribe(this.topics.WEIGHT_SENSOR1, (err) => {
+        if (!err) console.log('[mqtt] subscribed to', this.topics.WEIGHT_SENSOR1);
+      });
+      this.client.subscribe(this.topics.WEIGHT_SENSOR2, (err) => {
+        if (!err) console.log('[mqtt] subscribed to', this.topics.WEIGHT_SENSOR2);
+      });
+      // Subscribe to all petpal topics
+      this.client.subscribe('petpal/#', (err) => {
+        if (!err) console.log('[mqtt] subscribed petpal/#');
+      });
+    });
+
+    this.client.on('message', (topic, message) => {
+      const payload = message.toString();
+      console.log(`[mqtt] ${topic} -> ${payload}`);
+      
+      // Store weight sensor readings - expecting JSON format: {"weight": "1.0"}
+      if (topic === this.topics.WEIGHT_SENSOR1) {
+        try {
+          const data = JSON.parse(payload);
+          if (data.weight !== undefined) {
+            this.latestWeightSensor1 = parseFloat(data.weight);
+            console.log('[mqtt] Weight Sensor 1 updated:', this.latestWeightSensor1);
+          }
+        } catch (e) {
+          // Fallback: try parsing as plain number for backward compatibility
+          try {
+            this.latestWeightSensor1 = parseFloat(payload);
+            console.log('[mqtt] Weight Sensor 1 updated (plain):', this.latestWeightSensor1);
+          } catch (e2) {
+            console.error('[mqtt] Failed to parse weight sensor 1 data:', e);
+          }
+        }
+      } else if (topic === this.topics.WEIGHT_SENSOR2) {
+        try {
+          const data = JSON.parse(payload);
+          if (data.weight !== undefined) {
+            this.latestWeightSensor2 = parseFloat(data.weight);
+            console.log('[mqtt] Weight Sensor 2 updated:', this.latestWeightSensor2);
+          }
+        } catch (e) {
+          // Fallback: try parsing as plain number for backward compatibility
+          try {
+            this.latestWeightSensor2 = parseFloat(payload);
+            console.log('[mqtt] Weight Sensor 2 updated (plain):', this.latestWeightSensor2);
+          } catch (e2) {
+            console.error('[mqtt] Failed to parse weight sensor 2 data:', e);
+          }
+        }
+      }
     });
 
     this.client.on('error', (error) => {
@@ -86,15 +141,106 @@ class MQTTService {
 
   /**
    * Publish LCD display message
-   * @param {string} message - Message to display on LCD
+   * Handles both simple strings and structured message objects
+   * @param {string|Object} message - Message to display on LCD (string or object)
+   * @param {boolean} wrapInObject - If true and message is a string, wraps it in object with timestamp (default: true)
+   * @returns {Promise} - Resolves when message is published
    */
-  publishLCDMessage(message) {
-    const lcdMessage = {
-      text: message,
-      timestamp: new Date().toISOString()
-    };
+  publishLCDMessage(message, wrapInObject = true) {
+    // If message is already an object, use it directly
+    if (typeof message === 'object' && message !== null) {
+      return this.publish(this.topics.LCD, message);
+    }
+    
+    // If wrapInObject is true, wrap the string in an object with timestamp
+    if (wrapInObject) {
+      const lcdMessage = {
+        text: message,
+        timestamp: new Date().toISOString()
+      };
+      return this.publish(this.topics.LCD, lcdMessage);
+    }
+    
+    // Otherwise publish as simple string
+    return this.publish(this.topics.LCD, message);
+  }
 
-    return this.publish(this.topics.LCD, lcdMessage);
+  /**
+   * Publish LCD display message (simple string format, for backward compatibility)
+   * @param {string|Object} message - Message to display on LCD
+   * @returns {Promise} - Resolves when message is published
+   */
+  publishLCD(message) {
+    // For backward compatibility, publishLCD sends simple strings without wrapping
+    return this.publishLCDMessage(message, false);
+  }
+
+  /**
+   * Publish motor1 control command (simple format)
+   * @param {string} command - 'start' or 'stop'
+   */
+  publishMotor1(command) {
+    this.publish(this.topics.MOTOR1, command);
+    console.log(`[mqtt] Published to ${this.topics.MOTOR1}: ${command}`);
+  }
+
+  /**
+   * Publish motor2 control command (simple format)
+   * @param {string} command - 'start' or 'stop'
+   */
+  publishMotor2(command) {
+    this.publish(this.topics.MOTOR2, command);
+    console.log(`[mqtt] Published to ${this.topics.MOTOR2}: ${command}`);
+  }
+
+  /**
+   * Publish weight sensor control
+   * @param {number} sensorId - Sensor ID (1 or 2)
+   * @param {boolean} enable - true to enable, false to disable
+   */
+  publishWeightSensorControl(sensorId, enable) {
+    const topic = sensorId === 1 ? 'weightSensor1Control' : 'weightSensor2Control';
+    const command = enable ? 'enable' : 'disable';
+    this.publish(topic, command);
+    console.log(`[mqtt] Published to ${topic}: ${command}`);
+  }
+
+  /**
+   * Publish weight enable control message in JSON format
+   * @param {boolean} enable - true to enable, false to disable
+   * @returns {Object} - The message object sent
+   */
+  publishWeightEnable(enable) {
+    const message = {
+      enable: enable
+    };
+    
+    this.publish(this.topics.WEIGHT_ENABLE, message);
+    console.log(`[mqtt] Published to ${this.topics.WEIGHT_ENABLE}:`, JSON.stringify(message));
+    return message;
+  }
+
+  /**
+   * Get latest weight from weight sensor
+   * @param {number} sensorId - Sensor ID (1 or 2), defaults to 1
+   * @returns {number|null} - Latest weight value or null if not available
+   */
+  getLatestWeight(sensorId = 1) {
+    return sensorId === 1 ? this.latestWeightSensor1 : this.latestWeightSensor2;
+  }
+
+  /**
+   * Clear weight sensor data
+   * @param {number} sensorId - Sensor ID (1 or 2), defaults to 1
+   */
+  clearWeightSensor(sensorId = 1) {
+    if (sensorId === 1) {
+      this.latestWeightSensor1 = null;
+      console.log('[mqtt] Weight Sensor 1 data cleared');
+    } else {
+      this.latestWeightSensor2 = null;
+      console.log('[mqtt] Weight Sensor 2 data cleared');
+    }
   }
 
   /**
@@ -114,18 +260,19 @@ class MQTTService {
   /**
    * Generic publish method
    * @param {string} topic - MQTT topic
-   * @param {Object} message - Message object to publish
+   * @param {Object|string} message - Message object or string to publish
+   * @param {Object} opts - MQTT publish options (qos, retain, etc.)
    */
-  publish(topic, message) {
+  publish(topic, message, opts = { qos: 1 }) {
     return new Promise((resolve, reject) => {
       if (!this.isConnected) {
         console.warn('MQTT not connected, skipping publish to', topic);
         return reject(new Error('MQTT client not connected'));
       }
 
-      const payload = JSON.stringify(message);
+      const payload = typeof message === 'string' ? message : JSON.stringify(message);
       
-      this.client.publish(topic, payload, { qos: 1 }, (error) => {
+      this.client.publish(topic, payload, opts, (error) => {
         if (error) {
           console.error(`Failed to publish to ${topic}:`, error.message);
           reject(error);
@@ -193,4 +340,18 @@ class MQTTService {
 // Create singleton instance
 const mqttService = new MQTTService();
 
-module.exports = { mqttService };
+// Export both the service instance and individual methods for backward compatibility
+module.exports = { 
+  mqttService,
+  // Export methods for compatibility with old mqtt.js usage
+  client: mqttService.client,
+  publish: (topic, payload, opts) => mqttService.publish(topic, payload, opts),
+  publishMotor1: (command) => mqttService.publishMotor1(command),
+  publishMotor2: (command) => mqttService.publishMotor2(command),
+  publishLCD: (message) => mqttService.publishLCD(message),
+  publishWeightSensorControl: (sensorId, enable) => mqttService.publishWeightSensorControl(sensorId, enable),
+  publishWeightEnable: (enable) => mqttService.publishWeightEnable(enable),
+  getLatestWeight: (sensorId) => mqttService.getLatestWeight(sensorId),
+  clearWeightSensor: (sensorId) => mqttService.clearWeightSensor(sensorId),
+  TOPICS: mqttService.topics
+};

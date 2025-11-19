@@ -18,23 +18,17 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Divider,
   CircularProgress,
   LinearProgress,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PetsIcon from '@mui/icons-material/Pets';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
-import HistoryIcon from '@mui/icons-material/History';
 import AddIcon from '@mui/icons-material/Add';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { apiService, Animal, FeedingSchedule, LogEntry } from '../services/apiService.ts';

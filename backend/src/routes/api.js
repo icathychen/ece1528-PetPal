@@ -1,7 +1,6 @@
 const express = require('express');
 const { dbService } = require('../services/database');
-const { publishMotor1, publishMotor2, publishLCD, publishWeightSensorControl, publishWeightEnable, getLatestWeight, clearWeightSensor } = require('../services/mqtt');
-const { mqttService } = require('../services/mqttService');
+const { mqttService, publishMotor1, publishMotor2, publishLCD, publishWeightSensorControl, publishWeightEnable, getLatestWeight, clearWeightSensor } = require('../services/mqttService');
 const Joi = require('joi');
 
 const router = express.Router();
@@ -528,59 +527,59 @@ router.post('/mqtt/weight-sensor-control', (req, res) => {
   }
 });
 
-// POST /api/mqtt/motor1 - Control Motor 1
-router.post('/mqtt/motor1', (req, res) => {
-  try {
-    const { command } = req.body;
-    if (!command || !['start', 'stop'].includes(command)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid command. Must be "start" or "stop"'
-      });
-    }
+// // POST /api/mqtt/motor1 - Control Motor 1
+// router.post('/mqtt/motor1', (req, res) => {
+//   try {
+//     const { command } = req.body;
+//     if (!command || !['start', 'stop'].includes(command)) {
+//       return res.status(400).json({
+//         success: false,
+//         error: 'Invalid command. Must be "start" or "stop"'
+//       });
+//     }
 
-    publishMotor1(command);
+//     publishMotor1(command);
     
-    res.json({
-      success: true,
-      message: `Motor 1 command sent: ${command}`,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Motor 1 control error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to control Motor 1'
-    });
-  }
-});
+//     res.json({
+//       success: true,
+//       message: `Motor 1 command sent: ${command}`,
+//       timestamp: new Date().toISOString()
+//     });
+//   } catch (error) {
+//     console.error('Motor 1 control error:', error);
+//     res.status(500).json({
+//       success: false,
+//       error: 'Failed to control Motor 1'
+//     });
+//   }
+// });
 
-// POST /api/mqtt/motor2 - Control Motor 2
-router.post('/mqtt/motor2', (req, res) => {
-  try {
-    const { command } = req.body;
-    if (!command || !['start', 'stop'].includes(command)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid command. Must be "start" or "stop"'
-      });
-    }
+// // POST /api/mqtt/motor2 - Control Motor 2
+// router.post('/mqtt/motor2', (req, res) => {
+//   try {
+//     const { command } = req.body;
+//     if (!command || !['start', 'stop'].includes(command)) {
+//       return res.status(400).json({
+//         success: false,
+//         error: 'Invalid command. Must be "start" or "stop"'
+//       });
+//     }
 
-    publishMotor2(command);
+//     publishMotor2(command);
     
-    res.json({
-      success: true,
-      message: `Motor 2 command sent: ${command}`,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Motor 2 control error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to control Motor 2'
-    });
-  }
-});
+//     res.json({
+//       success: true,
+//       message: `Motor 2 command sent: ${command}`,
+//       timestamp: new Date().toISOString()
+//     });
+//   } catch (error) {
+//     console.error('Motor 2 control error:', error);
+//     res.status(500).json({
+//       success: false,
+//       error: 'Failed to control Motor 2'
+//     });
+//   }
+// });
 
 // POST /api/mqtt/lcd - Send message to LCD
 router.post('/mqtt/lcd', (req, res) => {

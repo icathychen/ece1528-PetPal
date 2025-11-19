@@ -10,8 +10,6 @@ const { feedingScheduler } = require('./services/scheduler');
 const { mqttService } = require('./services/mqttService');
 const apiRoutes = require('./routes/api');
 
-const { client: mqttClient, publish: mqttPublish } = require('./services/mqtt');// Ensure MQTT client is initialized
-
 const app = express();
 const PORT = process.env.PORT || 3001;
 

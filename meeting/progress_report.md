@@ -6,14 +6,14 @@
 - **Main page (Cathy):**  
     The web dashboard’s main page is now fully implemented and deployed. It presents a clear overview of all registered pets, showing each pet’s details (name, photo, and assigned container), as well as a summary table of upcoming feeding times. The schedule display highlights the next feeding for each animal. Seamless navigation allows users to create new pets, switch to detailed pet views, and access the schedule settings. All navigation flows between dashboard, pet binding, scheduling, and detailed views have been thoroughly tested.
 - **Pet binding page (Yilin):**  
-    Pet binding feature is operational, supporting the addition of new pets and linkage with their corresponding containers.
+    Pet binding feature is operational, supporting the addition of new pets and linkage with their corresponding containers. Weight will be updated based on loadcell data when weight detection is enabled, and can be manually changed. Food portion will be manually set to the desired amount.
 - **Schedule setting page (Cathy):**  
     The UI for schedule configuration has been completed. Users can add/edit feeding schedules, selecting feed times, quantities, and containers. The interface includes robust validation and an intuitive calendar/time selection widget. These changes sync directly to backend services via MQTT.
 
 ### Backend: MQTT Integration  
 MQTT integration is complete, connecting frontend schedules and hardware controls:
 - **Pet binding (Yilin):**  
-    Backend logic ensures new pet bindings trigger updates on associated MQTT topics.
+    When users add a new pet, they will first click the start weight detection, this will publish an MQTT message to the weight control topic to enable the loadcell, the weight data will then be sent to the weight topic and appear at the web page. If the user is satisfied with the weight, they will stop the detection, which will disable the loadcell by publishing to the same weight control topic.
 - **Schedule setting (Cathy):**  
     When users create or update feeding schedules, the backend publishes instructions to the appropriate topic (`motor1` or `motor2`) using a standardized JSON message:
     ```json

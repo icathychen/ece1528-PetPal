@@ -124,6 +124,53 @@ class ApiService {
       method: 'POST',
     });
   }
+
+  // ##### 6. MQTT Hardware Control APIs #####
+  
+  async getWeightSensor(sensorId: number) {
+    return this.request(`/api/mqtt/weight/${sensorId}`);
+  }
+
+  async clearWeightSensor(sensorId: number) {
+    return this.request(`/api/mqtt/weight/${sensorId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async controlMotor1(command: 'start' | 'stop') {
+    return this.request('/api/mqtt/motor1', {
+      method: 'POST',
+      body: JSON.stringify({ command }),
+    });
+  }
+
+  async controlMotor2(command: 'start' | 'stop') {
+    return this.request('/api/mqtt/motor2', {
+      method: 'POST',
+      body: JSON.stringify({ command }),
+    });
+  }
+
+  async sendLCDMessage(message: string) {
+    return this.request('/api/mqtt/lcd', {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    });
+  }
+
+  async controlWeightSensor(sensorId: number, enable: boolean) {
+    return this.request('/api/mqtt/weight-sensor-control', {
+      method: 'POST',
+      body: JSON.stringify({ sensorId, enable }),
+    });
+  }
+
+  async sendWeightEnable(enable: boolean) {
+    return this.request('/api/mqtt/weight-enable', {
+      method: 'POST',
+      body: JSON.stringify({ enable }),
+    });
+  }
 }
 
 // Create singleton instance

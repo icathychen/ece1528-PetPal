@@ -1,10 +1,10 @@
 # Multi-stage Dockerfile for React Frontend
-FROM node:18-alpine AS base
+FROM node:18 AS base
 
 # Install system dependencies
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y \
     git \
-    && rm -rf /var/cache/apk/*
+    && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
@@ -15,8 +15,8 @@ COPY package*.json ./
 # Development stage
 FROM base AS development
 
-# Install all dependencies
-RUN npm install
+# Install dependencies (do not install react-scripts globally)
+RUN npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
@@ -24,11 +24,15 @@ COPY . .
 # Expose port
 EXPOSE 3000
 
+# Set NODE_ENV
+ENV NODE_ENV=development
+ENV WDS_SOCKET_PORT=0
+
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:3000 || exit 1
 
-# Start development server
+# Start development server via npm (ensures local node_modules/.bin is used)
 CMD ["npm", "start"]
 
 # Build stage

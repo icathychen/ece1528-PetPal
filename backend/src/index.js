@@ -10,6 +10,8 @@ const { feedingScheduler } = require('./services/scheduler');
 const { mqttService } = require('./services/mqttService');
 const apiRoutes = require('./routes/api');
 
+const { client: mqttClient, publish: mqttPublish } = require('./services/mqtt');// Ensure MQTT client is initialized
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -51,6 +53,20 @@ app.get('/health', async (req, res) => {
 // API routes
 app.use('/api', apiRoutes);
 
+// === MQTT:  REST → MQTT 
+// POST /api/mqtt/publish { "topic": "petpal/test", "payload": { "hello": "world" } }
+app.post('/api/mqtt/publish', (req, res) => {
+  const { topic, payload } = req.body || {};
+  if (!topic) return res.status(400).json({ success: false, error: 'topic required' });
+  try {
+    mqttPublish(topic, payload ?? '');
+    return res.json({ success: true });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
+});
+// === MQTT: end
+
 // Root endpoint with API documentation
 app.get('/', (req, res) => {
   res.json({ 
@@ -79,6 +95,9 @@ app.get('/', (req, res) => {
       'System': {
         'GET /health': 'Health check',
         'GET /api/scheduler/status': 'Scheduler status'
+      },
+      'MQTT': {
+        'POST /api/mqtt/publish': 'Publish a message to MQTT (topic, payload)'
       }
     },
     features: [
@@ -86,7 +105,8 @@ app.get('/', (req, res) => {
       '✅ Schedule Setting for automated feeding',
       '✅ Auto Trigger every minute for scheduled feedings',
       '✅ Manual Trigger for on-demand feeding',
-      '✅ Comprehensive feeding logs and statistics'
+      '✅ Comprehensive feeding logs and statistics',
+      '✅ MQTT bridge for web/hardware messaging'//mqtt feature
     ]
   });
 });

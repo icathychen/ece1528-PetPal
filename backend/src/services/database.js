@@ -98,7 +98,7 @@ const dbService = {
   },
 
   // Feeding Trigger Functions
-  async getCurrentSchedules() {
+  async getCurrentSchedules() { 
     const queryText = `
       SELECT fs.*, a.name as animal_name, a.animal_type, a.weight
       FROM feeding_schedules fs 

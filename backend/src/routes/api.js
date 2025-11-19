@@ -330,6 +330,7 @@ router.post('/feeding/manual', async (req, res) => {
         container_id: container_id,
         food_amount: food_amount,
         animal_name: animal.name,
+        animal_weight: animal.weight,
         feeding_type: 'manual'
       });
 

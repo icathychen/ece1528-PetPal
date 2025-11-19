@@ -38,7 +38,7 @@ curl -X POST http://localhost:3001/api/schedules \
   -d '{
     "animal_id": 1,
     "container_id": 1,
-    "schedule_time": "22:15:02",
+    "schedule_time": "04:42",
     "food_amount": 0.25
   }'
 ```
@@ -78,7 +78,8 @@ curl -X POST http://localhost:3001/api/feeding/manual \
   -H "Content-Type: application/json" \
   -d '{
     "container_id": 1,
-    "food_amount": 0.1
+    "food_amount": 0.1，
+    
   }'
 ```
 

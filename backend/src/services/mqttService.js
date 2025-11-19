@@ -120,7 +120,7 @@ class MQTTService {
    * @param {string} feedingData.feeding_type - 'scheduled' or 'manual'
    */
   publishMotorTrigger(feedingData) {
-    const { container_id, food_amount, animal_name, feeding_type = 'scheduled' } = feedingData;
+    const { container_id, food_amount, animal_name, animal_weight, feeding_type = 'scheduled' } = feedingData;
 
     // Determine which motor topic to use
     const motorTopic = container_id === 1 ? this.topics.MOTOR1 : this.topics.MOTOR2;
@@ -131,6 +131,7 @@ class MQTTService {
       container_id: container_id,
       food_amount: food_amount,
       animal_name: animal_name,
+      animal_weight: animal_weight,
       feeding_type: feeding_type,
       timestamp: new Date().toISOString(),
       status: 'pending'

@@ -126,6 +126,7 @@ class FeedingScheduler {
           container_id: schedule.container_id,
           food_amount: schedule.food_amount,
           animal_name: schedule.animal_name,
+          animal_weight: animal.weight,
           feeding_type: 'scheduled'
         });
 

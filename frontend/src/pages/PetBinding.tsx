@@ -68,7 +68,7 @@ const PetBinding: React.FC<PetBindingProps> = ({ onBack }) => {
     // Keep the detected weight, just stop polling
     const weightNum = typeof formData.weight === 'string' ? parseFloat(formData.weight) : formData.weight;
     if (weightNum > 0) {
-      setSuccess(`Weight reading stopped at: ${weightNum.toFixed(2)}kg. You can manually adjust if needed.`);
+      setSuccess(`Weight reading stopped at: ${weightNum.toFixed(3)}kg. You can manually adjust if needed.`);
     } else {
       setError('No weight detected yet');
     }
@@ -156,7 +156,7 @@ const PetBinding: React.FC<PetBindingProps> = ({ onBack }) => {
               weight: detectedWeight
             }));
             setWeightDetected(true);
-            setSuccess(`📊 Current weight: ${detectedWeight.toFixed(2)}kg (Click "Stop Detection" to keep this value)`);
+            setSuccess(`📊 Current weight: ${detectedWeight.toFixed(3)}kg (Click "Stop Detection" to keep this value)`);
             // Don't clear interval - keep updating
           }
         }
@@ -168,27 +168,34 @@ const PetBinding: React.FC<PetBindingProps> = ({ onBack }) => {
     setPollIntervalRef(interval);
 
     // Stop polling after 60 seconds if user doesn't manually stop
-    setTimeout(() => {
-      if (interval) {
-        clearInterval(interval);
-        setPollIntervalRef(null);
-        setBindingMode(false);
+    const timeoutId = setTimeout(() => {
+      clearInterval(interval);
+      setPollIntervalRef(null);
+      setBindingMode(false);
+      
+      // Send timeout message
+      apiService.sendWeightEnable(false).catch((err: any) => {
+        console.error('Failed to disable weight sensor on timeout:', err);
+      });
+      
+      // Use setFormData callback to get the latest weight value
+      setFormData(prevData => {
+        const weightNum = typeof prevData.weight === 'string' ? parseFloat(prevData.weight) : prevData.weight;
         
-        // Send timeout message
-        apiService.sendWeightEnable(false).catch((err: any) => {
-          console.error('Failed to disable weight sensor on timeout:', err);
-        });
-        apiService.sendLCDMessage("Detection Timeout").catch((err: any) => {
-          console.error('Failed to send LCD message on timeout:', err);
-        });
-        
-        const weightNum = typeof formData.weight === 'string' ? parseFloat(formData.weight) : formData.weight;
         if (weightNum > 0) {
-          setSuccess(`⏱️ Detection timeout. Final weight: ${weightNum.toFixed(2)}kg`);
+          setSuccess(`⏱️ Detection timeout. Final weight: ${weightNum.toFixed(3)}kg`);
+          apiService.sendLCDMessage("Binding Complete").catch((err: any) => {
+            console.error('Failed to send LCD message on timeout:', err);
+          });
         } else {
           setError('⚠️ Weight detection timeout. No weight detected.');
+          apiService.sendLCDMessage("Detection Timeout").catch((err: any) => {
+            console.error('Failed to send LCD message on timeout:', err);
+          });
         }
-      }
+        
+        return prevData; // Don't modify the data, just read it
+      });
     }, 60000);
   };
 
@@ -304,7 +311,7 @@ const PetBinding: React.FC<PetBindingProps> = ({ onBack }) => {
                         <Box display="flex" alignItems="center">
                           <CircularProgress size={20} sx={{ mr: 1 }} />
                           <Typography variant="body2" fontWeight="bold" color="primary">
-                            {weightDetected ? `Reading: ${typeof formData.weight === 'number' ? formData.weight.toFixed(2) : formData.weight}kg` : 'Waiting for weight...'}
+                            {weightDetected ? `Reading: ${typeof formData.weight === 'number' ? formData.weight.toFixed(3) : formData.weight}kg` : 'Waiting for weight...'}
                           </Typography>
                         </Box>
                         <Button 
@@ -371,7 +378,7 @@ const PetBinding: React.FC<PetBindingProps> = ({ onBack }) => {
                         // Allow empty string or valid number
                         handleInputChange('weight', val === '' ? '' : parseFloat(val) || '');
                       }}
-                      inputProps={{ step: 0.1, min: 0 }}
+                      inputProps={{ step: 0.001, min: 0 }}
                       required
                       disabled={!bindingMode && formData.weight === ''}
                       helperText={

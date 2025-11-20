@@ -95,6 +95,54 @@ router.get('/pets', async (req, res) => {
   }
 });
 
+// PUT /api/pets/:id - Update animal information
+router.put('/pets/:id', async (req, res) => {
+  try {
+    const animalId = parseInt(req.params.id);
+    if (isNaN(animalId)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid animal ID' 
+      });
+    }
+
+    const { name, animal_type, weight, food_portion, food_level } = req.body;
+    
+    // Build update object with only provided fields
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (animal_type !== undefined) updateData.animal_type = animal_type;
+    if (weight !== undefined) updateData.weight = parseFloat(weight);
+    if (food_portion !== undefined) updateData.food_portion = parseFloat(food_portion);
+    if (food_level !== undefined) updateData.food_level = parseFloat(food_level);
+
+    // Check if animal exists
+    const existingAnimal = await dbService.getAnimalById(animalId);
+    if (!existingAnimal) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Animal not found' 
+      });
+    }
+
+    // Update animal record
+    const updatedAnimal = await dbService.updateAnimal(animalId, updateData);
+
+    res.json({
+      success: true,
+      message: 'Pet information updated successfully',
+      animal: updatedAnimal
+    });
+  } catch (error) {
+    console.error('Update pet error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to update pet information', 
+      details: error.message 
+    });
+  }
+});
+
 // GET /api/pets/weight/:weight - Get animal by weight (helper function)
 router.get('/pets/weight/:weight', async (req, res) => {
   try {
@@ -575,7 +623,7 @@ router.post('/mqtt/lcd', (req, res) => {
       });
     }
 
-    publishLCD(message);
+    publishLCDMessage(message);
     
     res.json({
       success: true,

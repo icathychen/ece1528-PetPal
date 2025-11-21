@@ -58,13 +58,23 @@ class FeedingScheduler {
 
   async checkScheduledFeedings() {
     try {
-      const currentTime = new Date().toTimeString().slice(0, 8); // HH:MM:SS format
-      console.log(`Checking for scheduled feedings at ${currentTime}`);
+      // Get current time in America/Toronto timezone
+      const now = new Date();
+      const torontoTime = now.toLocaleString('en-US', { 
+        timeZone: 'America/Toronto',
+        hour12: false
+      });
       
-      const currentSchedules = await dbService.getCurrentSchedules();
+      // Extract time part (HH:MM:SS)
+      const timePart = torontoTime.split(', ')[1] || torontoTime.split(' ')[1];
+      const currentTime = timePart; // Should be in HH:MM:SS format
+      
+      console.log(`⏰ Checking for scheduled feedings at ${currentTime} (Toronto time)`);
+      
+      const currentSchedules = await dbService.getCurrentSchedules(currentTime);
       
       if (currentSchedules.length === 0) {
-        console.log('No scheduled feedings found for current time');
+        console.log('📅 No scheduled feedings found for current time');
         return;
       }
 

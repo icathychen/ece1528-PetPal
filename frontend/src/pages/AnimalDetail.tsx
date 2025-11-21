@@ -60,6 +60,21 @@ const AnimalDetail: React.FC<AnimalDetailProps> = ({ animalId, onBack }) => {
   const [showManualDialog, setShowManualDialog] = useState(false);
   const [manualFeedingAmount, setManualFeedingAmount] = useState(0.2);
   const [manualFeeding, setManualFeeding] = useState(false);
+  
+  // Edit pet info state
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    animal_type: '',
+    weight: 0,
+    food_portion: 0,
+    food_level: 0,
+  });
+  const [updating, setUpdating] = useState(false);
+  
+  // Delete confirmation state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchAnimalData = async () => {
     try {
@@ -119,6 +134,51 @@ const AnimalDetail: React.FC<AnimalDetailProps> = ({ animalId, onBack }) => {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create schedule');
+    }
+  };
+
+  const handleUpdatePetInfo = async () => {
+    if (!animal) return;
+    
+    try {
+      setUpdating(true);
+      setError(null);
+      
+      const response = await apiService.updatePet(animal.id, editForm);
+      
+      if ((response as any).success) {
+        setSuccess(`✅ Pet information updated successfully!`);
+        setShowEditDialog(false);
+        fetchAnimalData(); // Refresh data
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update pet info');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleDeletePet = async () => {
+    if (!animal) return;
+    
+    try {
+      setDeleting(true);
+      setError(null);
+      
+      const response = await apiService.deletePet(animal.id);
+      
+      if ((response as any).success) {
+        setSuccess(`✅ ${animal.name} has been deleted successfully!`);
+        setShowDeleteDialog(false);
+        // Navigate back after a short delay
+        setTimeout(() => {
+          onBack();
+        }, 1500);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete pet');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -219,9 +279,37 @@ const AnimalDetail: React.FC<AnimalDetailProps> = ({ animalId, onBack }) => {
         <Grid item xs={12} md={4}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                🐾 Pet Information
-              </Typography>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                <Typography variant="h6">
+                  🐾 Pet Information
+                </Typography>
+                <Box display="flex" gap={1}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => {
+                      setEditForm({
+                        name: animal.name,
+                        animal_type: animal.animal_type,
+                        weight: animal.weight,
+                        food_portion: animal.food_portion,
+                        food_level: animal.food_level,
+                      });
+                      setShowEditDialog(true);
+                    }}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="error"
+                    onClick={() => setShowDeleteDialog(true)}
+                  >
+                    Delete
+                  </Button>
+                </Box>
+              </Box>
               <Box mb={2}>
                 <Typography variant="body2" color="text.secondary">Name</Typography>
                 <Typography variant="body1" fontWeight="bold">{animal.name}</Typography>
@@ -457,6 +545,99 @@ const AnimalDetail: React.FC<AnimalDetailProps> = ({ animalId, onBack }) => {
             startIcon={manualFeeding ? <CircularProgress size={20} /> : <RestaurantIcon />}
           >
             {manualFeeding ? 'Feeding...' : 'Start Feeding'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Edit Pet Info Dialog */}
+      <Dialog open={showEditDialog} onClose={() => setShowEditDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Pet Information</DialogTitle>
+        <DialogContent>
+          <Box pt={1}>
+            <TextField
+              fullWidth
+              label="Pet Name"
+              value={editForm.name}
+              onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+              sx={{ mb: 2 }}
+            />
+            
+            <TextField
+              fullWidth
+              label="Animal Type"
+              value={editForm.animal_type}
+              onChange={(e) => setEditForm(prev => ({ ...prev, animal_type: e.target.value }))}
+              sx={{ mb: 2 }}
+            />
+            
+            <TextField
+              fullWidth
+              label="Weight (kg)"
+              type="number"
+              value={editForm.weight}
+              onChange={(e) => setEditForm(prev => ({ ...prev, weight: parseFloat(e.target.value) }))}
+              inputProps={{ step: 0.001, min: 0 }}
+              sx={{ mb: 2 }}
+            />
+            
+            <TextField
+              fullWidth
+              label="Food per Meal (kg)"
+              type="number"
+              value={editForm.food_portion}
+              onChange={(e) => setEditForm(prev => ({ ...prev, food_portion: parseFloat(e.target.value) }))}
+              inputProps={{ step: 0.001, min: 0.05 }}
+              sx={{ mb: 2 }}
+            />
+            
+            <TextField
+              fullWidth
+              label="Current Food Level (kg)"
+              type="number"
+              value={editForm.food_level}
+              onChange={(e) => setEditForm(prev => ({ ...prev, food_level: parseFloat(e.target.value) }))}
+              inputProps={{ step: 0.1, min: 0 }}
+              helperText="Update this when refilling the food container"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowEditDialog(false)}>Cancel</Button>
+          <Button 
+            onClick={handleUpdatePetInfo} 
+            variant="contained" 
+            color="primary"
+            disabled={updating}
+            startIcon={updating ? <CircularProgress size={20} /> : undefined}
+          >
+            {updating ? 'Updating...' : 'Save Changes'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Delete Pet</DialogTitle>
+        <DialogContent>
+          <Box pt={1}>
+            <Typography variant="body1" gutterBottom>
+              Are you sure you want to delete <strong>{animal.name}</strong>?
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              This will remove all associated schedules and feeding history. This action cannot be undone.
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
+          <Button 
+            onClick={handleDeletePet} 
+            variant="contained" 
+            color="error"
+            disabled={deleting}
+            startIcon={deleting ? <CircularProgress size={20} /> : undefined}
+          >
+            {deleting ? 'Deleting...' : 'Delete Pet'}
           </Button>
         </DialogActions>
       </Dialog>

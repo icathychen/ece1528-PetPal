@@ -55,6 +55,25 @@ class ApiService {
     return this.request('/api/pets');
   }
 
+  async updatePet(animalId: number, petData: {
+    name?: string;
+    animal_type?: string;
+    weight?: number;
+    food_portion?: number;
+    food_level?: number;
+  }) {
+    return this.request(`/api/pets/${animalId}`, {
+      method: 'PUT',
+      body: JSON.stringify(petData),
+    });
+  }
+
+  async deletePet(animalId: number) {
+    return this.request(`/api/pets/${animalId}`, {
+      method: 'DELETE',
+    });
+  }
+
   async findPetByWeight(weight: number) {
     return this.request(`/api/pets/weight/${weight}`);
   }

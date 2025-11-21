@@ -53,6 +53,7 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3001
+      TZ: America/Toronto
       DATABASE_URL: postgresql://petpal_user:petpal_secure_password@database:5432/petpal_db
       DB_HOST: database
       DB_PORT: 5432

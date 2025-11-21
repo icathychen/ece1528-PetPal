@@ -25,7 +25,7 @@ const uint8_t MOTOR_IN1 = D5;  // ULN2003 IN1 (GPIO14)
 const uint8_t MOTOR_IN2 = D6;  // ULN2003 IN2 (GPIO12)
 const uint8_t MOTOR_IN3 = D7;  // ULN2003 IN3 (GPIO13)
 const uint8_t MOTOR_IN4 = D8;  // ULN2003 IN4 (GPIO15)
-const uint8_t MOTOR_EN  = D10;//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+const uint8_t MOTOR_EN  = D2;//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // 半步进序列
 const uint8_t MOTOR_SEQ[8][4] = {
@@ -44,7 +44,7 @@ const int HX711_SCK  = D13;   // D13
 HX711_ADC LoadCell(HX711_DOUT, HX711_SCK);
 
 const int   CAL_EEPROM_ADDR = 0;
-float       calibrationValue = 300;   // 你之前用的值；建议校准后再写
+float       calibrationValue = 348.36;   // 你之前用的值；建议校准后再写
 const unsigned long STABILIZE_MS = 2000; // 上电稳定时间
 const unsigned long PUBLISH_INTERVAL_MS = 500; // 发布间隔 500ms
 
@@ -127,10 +127,11 @@ void publishWeightEnable(bool enable) {
   
   String payload;
   serializeJson(doc, payload);
-  mqtt.publish(TOPIC_WEIGHT_ENABLE, payload.c_str());
   
-  Serial.print("⚖️  Weight Enable -> ");
-  Serial.println(enable ? "true" : "false");
+  bool success = mqtt.publish(TOPIC_WEIGHT_ENABLE, payload.c_str());
+  Serial.print("📤 weightEnable -> ");
+  Serial.print(payload);
+  Serial.println(success ? " ✅" : " ❌");
 }
 
 void handleMotorCommand(const char* payload, size_t len) {
@@ -148,43 +149,84 @@ void handleMotorCommand(const char* payload, size_t len) {
   }
 
   const char* cmd = doc["command"] | "";
-  float amountKg = doc["food_amount"] | 0.0f;
   const char* status = doc["status"] | "pending";
   const char* name = doc["animal_name"] | "Pet";
+  const char* feedingType = doc["feeding_type"] | "scheduled";
+  
+  // 解析 food_amount（可能是字符串或数字）
+  float amountKg = 0.0f;
+  if (doc.containsKey("food_amount")) {
+    if (doc["food_amount"].is<float>() || doc["food_amount"].is<double>()) {
+      amountKg = doc["food_amount"];
+    } else if (doc["food_amount"].is<const char*>()) {
+      String amountStr = doc["food_amount"].as<const char*>();
+      amountKg = amountStr.toFloat();
+    }
+  }
   
   // 解析 animal_weight（可能是字符串或数字）
   float animalWeight = 0.0f;
   if (doc.containsKey("animal_weight")) {
-    if (doc["animal_weight"].is<float>()) {
+    if (doc["animal_weight"].is<float>() || doc["animal_weight"].is<double>()) {
       animalWeight = doc["animal_weight"];
     } else if (doc["animal_weight"].is<const char*>()) {
       String weightStr = doc["animal_weight"].as<const char*>();
       animalWeight = weightStr.toFloat();
     }
   }
+  
+  Serial.print("📥 Motor: ");
+  Serial.print(feedingType);
+  Serial.print(" | ");
+  Serial.print(name);
+  Serial.print(" | ");
+  Serial.print(amountKg, 2);
+  Serial.print("kg | Animal: ");
+  Serial.print(animalWeight, 2);
+  Serial.println("kg");
 
   if (strcmp(cmd, "dispense") != 0) return;
   if (strcmp(status, "pending") != 0) return;
   if (amountKg <= 0) return;
-  // 移除 animal_weight <= 0 的检查，让匹配逻辑处理
 
-  // 进入等待重量匹配模式
+  // 判断喂食类型
+  if (strcmp(feedingType, "manual") == 0) {
+    // ========== Manual Feeding ==========
+    Serial.print("🍽️ MANUAL: ");
+    Serial.print(name);
+    Serial.print(" ");
+    Serial.print(amountKg, 2);
+    Serial.println("kg");
+
+    float grams = amountKg * 1000.0f;
+    long steps = (long)((grams / GRAMS_PER_STEP) + 0.5f);
+    if (steps < 1) steps = 1;
+
+    motor_busy = true;
+    publishLCD(String("Manual Feed - ") + name + " " + String(amountKg, 3) + "kg");
+
+    stepMotor(steps, 10.0f /*rpm*/, true /*CW*/);
+
+    motor_busy = false;
+    publishLCD(String("Complete - ") + name + ": " + String(amountKg, 3) + "kg");
+    
+    return;  // 手动喂食完成
+  }
+
+  // ========== Scheduled Feeding ==========
+  Serial.print("📅 SCHEDULED: Waiting for ");
+  Serial.print(name);
+  Serial.print(" (");
+  Serial.print(animalWeight, 2);
+  Serial.println("kg)");
+  
   waiting_for_weight = true;
   target_animal_weight = animalWeight;
   pending_animal_name = String(name);
   pending_food_amount = amountKg;
-  weight_match_start = 0;  // 还未开始匹配
-  weight_wait_start = millis();  // 记录开始等待时间
+  weight_match_start = 0;
+  weight_wait_start = millis();
 
-  Serial.println("========================================");
-  Serial.print("⏳ Waiting for animal: ");
-  Serial.print(name);
-  Serial.print(" (");
-  Serial.print(animalWeight, 1);
-  Serial.println("kg)");
-  Serial.println("========================================");
-
-  // 启动重量检测
   publishWeightEnable(true);
   publishLCD(String("Waiting for ") + name + " (" + String(animalWeight, 1) + "kg)");
 }
@@ -208,7 +250,7 @@ void handleWeightMatch(float detected_kg) {
     if (millis() - weight_match_start >= WEIGHT_STABLE_MS) {
       Serial.println("✓✓ Weight stable! Starting dispense...");
       
-      // 停止重量检测
+      // 🔴 停止重量检测 (Disable loadcell)
       publishWeightEnable(false);
       
       // 计算出粮步数
@@ -216,13 +258,13 @@ void handleWeightMatch(float detected_kg) {
       long steps = (long)((grams / GRAMS_PER_STEP) + 0.5f);
       if (steps < 1) steps = 1;
 
-      // 开始出粮
+      // 🔵 第二个Enable信号：启动电机旋转出粮
       motor_busy = true;
       waiting_for_weight = false;
       
       publishLCD(String("Feeding ") + pending_animal_name + " " + String(pending_food_amount, 3) + "kg");
       
-      stepMotor(steps, 8.0f /*rpm*/, true /*CW*/);
+      stepMotor(steps, 10.0f /*rpm*/, true /*CW*/);
       
       motor_busy = false;
       publishLCD(String("Complete - ") + pending_animal_name + ": " + String(pending_food_amount, 3) + "kg");
@@ -256,7 +298,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int len) {
   Serial.print(" :: ");
   Serial.println(payloadStr);
 
-  // 处理 weightEnable（从外部或自己发来的）
+  // 处理 weightEnable
   if (topicStr == TOPIC_WEIGHT_ENABLE) {
     StaticJsonDocument<200> doc;
     DeserializationError error = deserializeJson(doc, payloadStr);
@@ -266,10 +308,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int len) {
       
       if (new_state != weight_detection_enabled) {
         weight_detection_enabled = new_state;
-        Serial.println("========================================");
-        Serial.print("Weight detection ");
-        Serial.println(weight_detection_enabled ? "ENABLED ✅" : "DISABLED ❌");
-        Serial.println("========================================");
+        Serial.print("⚡ Weight detection ");
+        Serial.println(weight_detection_enabled ? "ENABLED" : "DISABLED");
       }
     }
   }

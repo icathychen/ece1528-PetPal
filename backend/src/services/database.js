@@ -61,6 +61,64 @@ const dbService = {
     return result.rows;
   },
 
+  async getAnimalById(animal_id) {
+    const queryText = 'SELECT * FROM animals WHERE id = $1';
+    const result = await query(queryText, [animal_id]);
+    return result.rows[0];
+  },
+
+  async updateAnimal(animal_id, updateData) {
+    // Build dynamic UPDATE query based on provided fields
+    const fields = [];
+    const values = [];
+    let paramIndex = 1;
+
+    if (updateData.name !== undefined) {
+      fields.push(`name = $${paramIndex}`);
+      values.push(updateData.name);
+      paramIndex++;
+    }
+    if (updateData.animal_type !== undefined) {
+      fields.push(`animal_type = $${paramIndex}`);
+      values.push(updateData.animal_type);
+      paramIndex++;
+    }
+    if (updateData.weight !== undefined) {
+      fields.push(`weight = $${paramIndex}`);
+      values.push(updateData.weight);
+      paramIndex++;
+    }
+    if (updateData.food_portion !== undefined) {
+      fields.push(`food_portion = $${paramIndex}`);
+      values.push(updateData.food_portion);
+      paramIndex++;
+    }
+    if (updateData.food_level !== undefined) {
+      fields.push(`food_level = $${paramIndex}`);
+      values.push(updateData.food_level);
+      paramIndex++;
+    }
+
+    fields.push(`updated_at = CURRENT_TIMESTAMP`);
+    values.push(animal_id);
+
+    const queryText = `
+      UPDATE animals 
+      SET ${fields.join(', ')}
+      WHERE id = $${paramIndex}
+      RETURNING *;
+    `;
+    
+    const result = await query(queryText, values);
+    return result.rows[0];
+  },
+
+  async deleteAnimal(animal_id) {
+    const queryText = 'DELETE FROM animals WHERE id = $1 RETURNING *';
+    const result = await query(queryText, [animal_id]);
+    return result.rows[0];
+  },
+
   // Schedule Setting Functions
   async createFeedingSchedule(scheduleData) {
     const { animal_id, container_id, schedule_time, food_amount } = scheduleData;
@@ -98,16 +156,16 @@ const dbService = {
   },
 
   // Feeding Trigger Functions
-  async getCurrentSchedules() { 
+  async getCurrentSchedules(currentTime) { 
     const queryText = `
       SELECT fs.*, a.name as animal_name, a.animal_type, a.weight
       FROM feeding_schedules fs 
       JOIN animals a ON fs.animal_id = a.id 
       WHERE fs.is_active = true 
-      AND fs.schedule_time = CURRENT_TIME::time(0)
+      AND fs.schedule_time::text = $1
       ORDER BY fs.container_id;
     `;
-    const result = await query(queryText);
+    const result = await query(queryText, [currentTime]);
     return result.rows;
   },
 

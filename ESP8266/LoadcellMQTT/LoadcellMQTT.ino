@@ -25,6 +25,7 @@ const uint8_t MOTOR_IN1 = D5;  // ULN2003 IN1 (GPIO14)
 const uint8_t MOTOR_IN2 = D6;  // ULN2003 IN2 (GPIO12)
 const uint8_t MOTOR_IN3 = D7;  // ULN2003 IN3 (GPIO13)
 const uint8_t MOTOR_IN4 = D8;  // ULN2003 IN4 (GPIO15)
+const uint8_t MOTOR_EN  = D10;//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // 半步进序列
 const uint8_t MOTOR_SEQ[8][4] = {
@@ -81,6 +82,8 @@ void stepMotor(long steps, float rpm, bool cw) {
   if (us_per < 500) us_per = 500;
 
   uint8_t idx = 0;
+  digitalWrite(MOTOR_EN, HIGH);////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  Serial.print("MOTOR_EN, HIGH");
   for (long k = 0; k < steps; ++k) {
     driveMotorPhase(idx);
     delayMicroseconds(us_per);
@@ -100,6 +103,8 @@ void stepMotor(long steps, float rpm, bool cw) {
   digitalWrite(MOTOR_IN2, LOW);
   digitalWrite(MOTOR_IN3, LOW);
   digitalWrite(MOTOR_IN4, LOW);
+  digitalWrite(MOTOR_EN, LOW);////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  Serial.print("MOTOR_EN, LOW");
 }
 
 // ======== MQTT 辅助函数 ========
@@ -217,7 +222,7 @@ void handleWeightMatch(float detected_kg) {
       
       publishLCD(String("Feeding ") + pending_animal_name + " " + String(pending_food_amount, 3) + "kg");
       
-      stepMotor(steps, 10.0f /*rpm*/, true /*CW*/);
+      stepMotor(steps, 8.0f /*rpm*/, true /*CW*/);
       
       motor_busy = false;
       publishLCD(String("Complete - ") + pending_animal_name + ": " + String(pending_food_amount, 3) + "kg");
@@ -349,10 +354,13 @@ void setup() {
   pinMode(MOTOR_IN2, OUTPUT);
   pinMode(MOTOR_IN3, OUTPUT);
   pinMode(MOTOR_IN4, OUTPUT);
+  pinMode(MOTOR_EN, OUTPUT);////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   digitalWrite(MOTOR_IN1, LOW);
   digitalWrite(MOTOR_IN2, LOW);
   digitalWrite(MOTOR_IN3, LOW);
   digitalWrite(MOTOR_IN4, LOW);
+  digitalWrite(MOTOR_EN, LOW);////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  Serial.print("setupMOTOR_EN, LOW");
 
   // 连接 Wi-Fi
   ensureWifi();

@@ -5,10 +5,14 @@
 #include <PubSubClient.h>
 
 // ======== Wi-Fi & MQTT 配置 ========
-char ssid_wifi[] = "Rogers";
-char pass_wifi[] = "adminkentish30";
+char ssid_wifi[] = "lzcnn";
+char pass_wifi[] = "xblmsbsb";
 
-const char* MQTT_HOST = "10.0.0.108";
+// char ssid_wifi[] = "Rogers";
+// char pass_wifi[] = "adminkentish30";
+
+const char* MQTT_HOST = "10.210.133.14";
+// const char* MQTT_HOST = "10.0.0.108";
 const int   MQTT_PORT = 1883;
 
 // MQTT Topics
@@ -30,7 +34,9 @@ const unsigned long PUBLISH_INTERVAL_MS = 500;
 
 // ======== 全局状态 ========
 unsigned long lastPub = 0;
-bool weight_detection_enabled = false;
+bool web_enable = false;      // Web 发送的 enable
+bool motor1_enable = false;   // Motor1 发送的 enable1
+bool motor2_enable = false;   // Motor2 发送的 enable2
 
 // ======== MQTT 回调 ========
 void mqttCallback(char* topic, byte* payload, unsigned int len) {
@@ -49,14 +55,26 @@ void mqttCallback(char* topic, byte* payload, unsigned int len) {
     StaticJsonDocument<128> doc;
     DeserializationError error = deserializeJson(doc, payloadStr);
     
-    if (!error && doc.containsKey("enable")) {
-      bool new_state = doc["enable"];
-      
-      if (new_state != weight_detection_enabled) {
-        weight_detection_enabled = new_state;
-        Serial.print("⚡ Weight detection ");
-        Serial.println(weight_detection_enabled ? "ENABLED" : "DISABLED");
+    if (!error) {
+      if (doc.containsKey("enable")) {
+        web_enable = doc["enable"];
+        Serial.print("⚡ Web enable: ");
+        Serial.println(web_enable ? "ON" : "OFF");
       }
+      if (doc.containsKey("enable1")) {
+        motor1_enable = doc["enable1"];
+        Serial.print("⚡ Motor1 enable: ");
+        Serial.println(motor1_enable ? "ON" : "OFF");
+      }
+      if (doc.containsKey("enable2")) {
+        motor2_enable = doc["enable2"];
+        Serial.print("⚡ Motor2 enable: ");
+        Serial.println(motor2_enable ? "ON" : "OFF");
+      }
+      
+      bool overall_enabled = web_enable || motor1_enable || motor2_enable;
+      Serial.print("📊 Overall weight detection: ");
+      Serial.println(overall_enabled ? "ENABLED" : "DISABLED");
     }
   }
 }
@@ -147,7 +165,8 @@ void loop() {
   if (LoadCell.update()) newDataReady = true;
 
   unsigned long now = millis();
-  if (weight_detection_enabled && newDataReady && (now - lastPub >= PUBLISH_INTERVAL_MS)) {
+  bool overall_enabled = web_enable || motor1_enable || motor2_enable;
+  if (overall_enabled && newDataReady && (now - lastPub >= PUBLISH_INTERVAL_MS)) {
     float weight = LoadCell.getData();
     float weight_kg = weight / 1000.0;
     

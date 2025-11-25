@@ -3,10 +3,14 @@
 #include <PubSubClient.h>
 
 // ======== Wi-Fi & MQTT 配置 ========
-char ssid_wifi[] = "Rogers";
-char pass_wifi[] = "adminkentish30";
+char ssid_wifi[] = "lzcnn";
+char pass_wifi[] = "xblmsbsb";
 
-const char* MQTT_HOST = "10.0.0.108";
+// char ssid_wifi[] = "Rogers";
+// char pass_wifi[] = "adminkentish30";
+
+const char* MQTT_HOST = "10.210.133.14";
+// const char* MQTT_HOST = "10.0.0.108";
 const int   MQTT_PORT = 1883;
 
 // MQTT Topics
@@ -130,9 +134,10 @@ void publishLCD(const String& text) {
   Serial.println(text);
 }
 
-void publishWeightEnable(bool enable) {
+void publishWeightEnable(bool enable, uint8_t motor_id) {
   StaticJsonDocument<64> doc;
-  doc["enable"] = enable;
+  String enableKey = (motor_id == 1) ? "enable1" : "enable2";
+  doc[enableKey] = enable;
   
   String payload;
   serializeJson(doc, payload);
@@ -252,7 +257,7 @@ void handleMotorCommand(const char* payload, size_t len, uint8_t motor_id) {
     weight_wait_start_m2 = millis();
   }
 
-  publishWeightEnable(true);
+  publishWeightEnable(true, motor_id);
   publishLCD(String("M") + motor_id + " Waiting - " + name);
 }
 
@@ -283,7 +288,7 @@ void handleWeightMatch(float detected_kg, uint8_t motor_id) {
       Serial.print(motor_id);
       Serial.println(" Stable! Dispensing...");
       
-      publishWeightEnable(false);
+      publishWeightEnable(false, motor_id);
       
       float grams = *pending_amount * 1000.0f;
       long steps = (long)((grams / GRAMS_PER_STEP) + 0.5f);
@@ -444,7 +449,7 @@ void loop() {
   if (waiting_for_weight_m1 && (now - weight_wait_start_m1 >= WEIGHT_TIMEOUT_MS)) {
     Serial.println("⚠️ M1 Timeout!");
     publishLCD("M1 Timeout: " + pending_animal_name_m1);
-    publishWeightEnable(false);
+    publishWeightEnable(false, 1);
     waiting_for_weight_m1 = false;
     target_animal_weight_m1 = 0.0f;
     pending_animal_name_m1 = "";
@@ -457,7 +462,7 @@ void loop() {
   if (waiting_for_weight_m2 && (now - weight_wait_start_m2 >= WEIGHT_TIMEOUT_MS)) {
     Serial.println("⚠️ M2 Timeout!");
     publishLCD("M2 Timeout: " + pending_animal_name_m2);
-    publishWeightEnable(false);
+    publishWeightEnable(false, 2);
     waiting_for_weight_m2 = false;
     target_animal_weight_m2 = 0.0f;
     pending_animal_name_m2 = "";

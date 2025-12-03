@@ -11,7 +11,7 @@ char pass_wifi[] = "xblmsbsb";
 // char ssid_wifi[] = "Rogers";
 // char pass_wifi[] = "adminkentish30";
 
-const char* MQTT_HOST = "10.210.133.14";
+const char* MQTT_HOST = "10.48.49.14";
 // const char* MQTT_HOST = "10.0.0.108";
 const int   MQTT_PORT = 1883;
 
@@ -23,12 +23,12 @@ WiFiClient espClient;
 PubSubClient mqtt(espClient);
 
 // ======== HX711 配置 ========
-const int HX711_DOUT = D5;
-const int HX711_SCK  = D6;
+const int HX711_DOUT = D12;
+const int HX711_SCK  = D13;
 HX711_ADC LoadCell(HX711_DOUT, HX711_SCK);
 
 const int   CAL_EEPROM_ADDR = 0;
-float       calibrationValue = 348.36;
+float       calibrationValue = 1713.07;
 const unsigned long STABILIZE_MS = 2000;
 const unsigned long PUBLISH_INTERVAL_MS = 500;
 

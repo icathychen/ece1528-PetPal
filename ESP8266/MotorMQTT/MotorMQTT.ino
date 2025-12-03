@@ -9,7 +9,7 @@ char pass_wifi[] = "xblmsbsb";
 // char ssid_wifi[] = "Rogers";
 // char pass_wifi[] = "adminkentish30";
 
-const char* MQTT_HOST = "10.210.133.14";
+const char* MQTT_HOST = "10.48.49.14";
 // const char* MQTT_HOST = "10.0.0.108";
 const int   MQTT_PORT = 1883;
 
@@ -25,16 +25,16 @@ PubSubClient mqtt(espClient);
 
 // ======== 步进电机配置 (28BYJ-48 + ULN2003) ========
 // Motor 1
-const uint8_t MOTOR1_IN1 = D5;
-const uint8_t MOTOR1_IN2 = D6;
-const uint8_t MOTOR1_IN3 = D7;
-const uint8_t MOTOR1_IN4 = D8;
+const uint8_t MOTOR1_IN1 = D4;
+const uint8_t MOTOR1_IN2 = D5;
+const uint8_t MOTOR1_IN3 = D6;
+const uint8_t MOTOR1_IN4 = D7;
 
 // Motor 2
-const uint8_t MOTOR2_IN1 = D9;
-const uint8_t MOTOR2_IN2 = D10;
-const uint8_t MOTOR2_IN3 = D11;
-const uint8_t MOTOR2_IN4 = D12;
+const uint8_t MOTOR2_IN1 = D8;
+const uint8_t MOTOR2_IN2 = D9;
+const uint8_t MOTOR2_IN3 = D10;
+const uint8_t MOTOR2_IN4 = D11;
 
 const uint8_t MOTOR_SEQ[8][4] = {
   {1,0,0,0},{1,1,0,0},{0,1,0,0},{0,1,1,0},
@@ -225,7 +225,7 @@ void handleMotorCommand(const char* payload, size_t len, uint8_t motor_id) {
     *motor_busy = true;
     publishLCD(String("M") + motor_id + " Manual - " + name);
 
-    stepMotor(motor_id, steps, 10.0f, true);
+    stepMotor(motor_id, steps, 10.0f, false);
 
     *motor_busy = false;
     publishLCD(String("M") + motor_id + " Complete - " + name);
@@ -299,7 +299,7 @@ void handleWeightMatch(float detected_kg, uint8_t motor_id) {
       
       publishLCD(String("M") + motor_id + " Feeding " + *pending_name);
       
-      stepMotor(motor_id, steps, 10.0f, true);
+      stepMotor(motor_id, steps, 10.0f, false);
       
       *motor_busy = false;
       publishLCD(String("M") + motor_id + " Complete - " + *pending_name);

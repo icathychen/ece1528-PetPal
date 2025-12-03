@@ -261,51 +261,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onAnimalSelect, onShowBinding }) 
           </Card>
         </Grid>
 
-        {/* Upcoming Schedules */}
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                ⏰ Today's Feeding Schedule
-              </Typography>
-              {schedules.length === 0 ? (
-                <Alert severity="info">
-                  No feeding schedules configured. Use Schedule Setting to create feeding times!
-                </Alert>
-              ) : (
-                <Grid container spacing={2}>
-                  {schedules.map((schedule) => (
-                    <Grid item xs={12} sm={6} md={4} key={schedule.id}>
-                      <Card variant="outlined">
-                        <CardContent>
-                          <Typography variant="subtitle1" fontWeight="bold">
-                            {schedule.animal_name}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Container {schedule.container_id}
-                          </Typography>
-                          <Typography variant="h6" color="primary" mt={1}>
-                            {schedule.schedule_time}
-                          </Typography>
-                          <Typography variant="body2">
-                            {schedule.food_amount}kg food
-                          </Typography>
-                          <Chip 
-                            label={schedule.is_active ? 'Active' : 'Inactive'}
-                            color={schedule.is_active ? 'success' : 'default'}
-                            size="small"
-                            sx={{ mt: 1 }}
-                          />
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-
         {/* Pet Cards - Main Feature */}
         <Grid item xs={12}>
           <Typography variant="h5" gutterBottom>
@@ -331,7 +286,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onAnimalSelect, onShowBinding }) 
             </Card>
           ) : (
             <Grid container spacing={3}>
-              {animals.map((animal) => (
+              {animals.map((animal: Animal) => (
                 <Grid item xs={12} sm={6} md={4} key={animal.id}>
                   <Card sx={{ height: '100%' }}>
                     <CardActionArea 
@@ -375,6 +330,51 @@ const Dashboard: React.FC<DashboardProps> = ({ onAnimalSelect, onShowBinding }) 
               ))}
             </Grid>
           )}
+        </Grid>
+
+        {/* Upcoming Schedules */}
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                ⏰ Today's Feeding Schedule
+              </Typography>
+              {schedules.length === 0 ? (
+                <Alert severity="info">
+                  No feeding schedules configured. Use Schedule Setting to create feeding times!
+                </Alert>
+              ) : (
+                <Grid container spacing={2}>
+                  {schedules.map((schedule: FeedingSchedule) => (
+                    <Grid item xs={12} sm={6} md={4} key={schedule.id}>
+                      <Card variant="outlined">
+                        <CardContent>
+                          <Typography variant="subtitle1" fontWeight="bold">
+                            {schedule.animal_name}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Container {schedule.container_id}
+                          </Typography>
+                          <Typography variant="h6" color="primary" mt={1}>
+                            {schedule.schedule_time}
+                          </Typography>
+                          <Typography variant="body2">
+                            {schedule.food_amount}kg food
+                          </Typography>
+                          <Chip 
+                            label={schedule.is_active ? 'Active' : 'Inactive'}
+                            color={schedule.is_active ? 'success' : 'default'}
+                            size="small"
+                            sx={{ mt: 1 }}
+                          />
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              )}
+            </CardContent>
+          </Card>
         </Grid>
       </Grid>
 
